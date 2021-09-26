@@ -28,7 +28,7 @@ function iterateRefTextareas(textareas)
         button.style.marginTop = "1rem"
         button.dataset.textarea = textareas[i].id
         button.id = textareas[i].id + '_button'
-        button.appendChild(document.createTextNode("Format citation"));
+        button.appendChild(document.createTextNode("CiteItRight (hover)"));
         button.addEventListener("mouseover", function (event) {
             let status = document.getElementById(this.dataset.textarea + '_status')
             if (status.classList.contains('hidden')) {
@@ -58,12 +58,14 @@ function iterateRefTextareas(textareas)
             if (diffDiv) {
                 diffDiv.classList.remove('hidden')
             }
+            this.innerText = 'Update'
         })
         status.addEventListener("mouseout", function(event) {
             let diffDiv = document.getElementById(this.dataset.textarea + '_diff')
             if (diffDiv) {
                 diffDiv.classList.add('hidden')
             }
+            this.innerText = 'Review'
         })
         status.addEventListener("click", function(event) {
             event.preventDefault()
@@ -107,6 +109,7 @@ function preloadReference(textareaId) {
 
     chrome.runtime.sendMessage({msg: htmlReference}, function ({data}) {
         button.disabled = false;
+        button.innerText = "CiteItRight (click)"
 
         if (data.error) {
             status.innerText = 'Error'
@@ -115,7 +118,7 @@ function preloadReference(textareaId) {
             if (data.match) {
                 status.innerText = 'Match'
             } else {
-                status.innerText = 'Update'
+                status.innerText = 'Review'
                 status.disabled = false
             }
 
