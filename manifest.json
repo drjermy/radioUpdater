@@ -1,0 +1,32 @@
+{
+    "name": "RadioUpdater",
+    "version": "0.1",
+    "description": "Replace references on Radiopaedia.",
+    "manifest_version": 3,
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*.radiopaedia.org/*"
+            ],
+            "all_frames": true,
+            "js": [
+                "assets/js/contentScript.js"
+            ],
+            "css": [
+                "assets/css/app.css"
+            ]
+        }
+    ],
+    "host_permissions": [
+        "https://citeitright.co.uk/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "icons": {
+        "16": "assets/images/icon16.png",
+        "32": "assets/images/icon32.png",
+        "48": "assets/images/icon48.png",
+        "128": "assets/images/icon128.png"
+    }
+}
