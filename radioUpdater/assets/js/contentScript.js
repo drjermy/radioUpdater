@@ -86,11 +86,15 @@ function preloadReference(textareaId, cache) {
         button.innerText = "CiteItRight (click)"
 
         if (data.error) {
-            setStatus(status, 'Error', 'red', true)
+            setStatus(status, 'Report', 'red')
+            el.dataset.error = JSON.stringify(data)
         } else {
             if (! data.citation) {
-                setStatus(status, 'No citation', 'red', true)
+                setStatus(status, 'Report', 'red')
+                el.dataset.error = JSON.stringify(data)
             } else {
+
+                el.removeAttribute('data-error')
 
                 if (data.match) {
                     setStatus(status, 'Match', '#74bcf7', true)
@@ -135,36 +139,6 @@ function hideDiff(el)
     let diffDiv = document.getElementById(el.dataset.textarea + '_diff')
     if (diffDiv) {
         diffDiv.classList.add('hidden')
-    }
-}
-
-function copyCitation(el)
-{
-    let textarea = document.getElementById(el.dataset.textarea)
-    let preDiv = document.getElementById(el.dataset.textarea + '_pre')
-
-    if (textarea && preDiv) {
-        let undoDiv = createHiddenDiv(el.dataset.textarea + '_undo', document.createTextNode(textarea.value))
-        el.parentNode.appendChild(undoDiv)
-
-        textarea.value = decodeHTML(preDiv.innerHTML)
-        preDiv.remove()
-        document.getElementById(el.dataset.textarea + '_diff').remove()
-
-        el.innerText = 'Undo'
-    }
-}
-
-function undoCitation(el)
-{
-    let textarea = document.getElementById(el.dataset.textarea)
-    let undoDiv = document.getElementById(el.dataset.textarea + '_undo')
-
-    if (textarea && undoDiv) {
-        textarea.value = decodeHTML(undoDiv.innerHTML)
-        undoDiv.remove()
-
-        el.classList.add('hidden')
     }
 }
 
@@ -238,19 +212,21 @@ function statusButton(textarea)
 function addStatusButtonListeners(el)
 {
     el.addEventListener("mouseover", function(event) {
-        if (this.innerText !== 'Undo') {
+        if (this.innerText === 'Review') {
             showDiff(this)
         }
     })
     el.addEventListener("mouseout", function(event) {
-        if (this.innerText !== 'Undo') {
+        if (this.innerText === 'Update') {
             hideDiff(this)
         }
     })
     el.addEventListener("click", function(event) {
         event.preventDefault()
 
-        if (this.innerText === 'Undo') {
+        if (this.innerText === 'Report') {
+            reportCitation(this)
+        } else if (this.innerText === 'Undo') {
             undoCitation(this)
         } else {
             copyCitation(this)
@@ -259,7 +235,58 @@ function addStatusButtonListeners(el)
     })
 }
 
-function setStatus(status, statusText, statusColour, disabled = false)
+function copyCitation(el)
+{
+    let textarea = document.getElementById(el.dataset.textarea)
+    let preDiv = document.getElementById(el.dataset.textarea + '_pre')
+
+    if (textarea && preDiv) {
+        let undoDiv = createHiddenDiv(el.dataset.textarea + '_undo', document.createTextNode(textarea.value))
+        el.parentNode.appendChild(undoDiv)
+
+        textarea.value = decodeHTML(preDiv.innerHTML)
+        preDiv.remove()
+        document.getElementById(el.dataset.textarea + '_diff').remove()
+
+        el.innerText = 'Undo'
+    }
+}
+
+function undoCitation(el)
+{
+    let textarea = document.getElementById(el.dataset.textarea)
+    let undoDiv = document.getElementById(el.dataset.textarea + '_undo')
+
+    if (textarea && undoDiv) {
+        textarea.value = decodeHTML(undoDiv.innerHTML)
+        textarea.dataset.error = JSON.stringify({
+            'search': undoDiv.innerHTML,
+            'error': 'User report'
+        })
+        undoDiv.remove()
+
+        setStatus(el, 'Report', 'red')
+    }
+}
+
+function reportCitation(el)
+{
+    let textarea = document.getElementById(el.dataset.textarea)
+
+    chrome.runtime.sendMessage({error: textarea.dataset.error}, function ({data}) {
+
+        if (data.id) {
+            setStatus(el, 'Reported')
+            el.disabled = true
+        } else {
+            setStatus(el, 'Reporting failed', 'red')
+        }
+    })
+
+}
+
+
+function setStatus(status, statusText, statusColour = '#74bcf7', disabled = false)
 {
     status.style.backgroundColor = statusColour
     status.innerText = statusText

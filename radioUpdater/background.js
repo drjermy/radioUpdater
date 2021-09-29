@@ -1,21 +1,39 @@
 chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) {
 
-    let encodedRef = encodeURIComponent(message.msg)
-    let cache = message.cache
+    if (message.error) {
 
-    fetch('https://citeitright.co.uk/rest?search=' + encodedRef + '&cache=' + cache)
-        .then(response => response.text())
-        .then(data => {
-            let dataObj = JSON.parse(data)
-            senderResponse({data: dataObj})
-        })
-        .catch(error => {
-            senderResponse({
-                data: {
-                    error: error
-                }
+        let encodedError = encodeURIComponent(message.error)
+
+        fetch('https://citeitright.co.uk/report?error=' + encodedError)
+            .then(response => response.text())
+            .then(data => {
+                let dataObj = JSON.parse(data)
+                senderResponse({data: dataObj})
             })
-        })
-    return true;  // Will respond asynchronously.
+            .catch(error => {
+                senderResponse({ reported: false })
+            })
+        return true;
+    } else {
 
+        let encodedRef = encodeURIComponent(message.msg)
+        let cache = message.cache
+
+        fetch('https://citeitright.co.uk/rest?search=' + encodedRef + '&cache=' + cache)
+            .then(response => response.text())
+            .then(data => {
+                let dataObj = JSON.parse(data)
+                senderResponse({data: dataObj})
+            })
+            .catch(error => {
+                senderResponse({
+                    data: {
+                        search: message.msg,
+                        cache: cache,
+                        error: error
+                    }
+                })
+            })
+        return true;  // Will respond asynchronously.
+    }
 });
