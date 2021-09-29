@@ -3,7 +3,7 @@ updateArticleEdit();
 function updateArticleEdit() {
     let editReferenceBlock = document.getElementsByClassName('references');
 
-    if (editReferenceBlock !== null) {
+    if (editReferenceBlock[0]) {
         iterateLinks(document.querySelectorAll('[data-citeitright]'))
 
         iterateRefTextareas(editReferenceBlock[0].getElementsByTagName('textarea'))
@@ -109,7 +109,7 @@ function preloadReference(textareaId, cache = '') {
         button.disabled = false;
         button.innerText = "CiteItRight (click)"
 
-        if (data.error) {
+        if (data.error || ! data.citation) {
             status.innerText = 'Error'
         } else {
 
