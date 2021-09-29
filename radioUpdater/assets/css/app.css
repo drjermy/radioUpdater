@@ -3,3 +3,11 @@
     font-size: 1rem;
     padding: 0.3rem 0 0.1rem 1rem;
 }
+
+.diff-wrapper .old {
+    display: none;
+}
+
+.diff-wrapper .new {
+    display: block !important;
+}
