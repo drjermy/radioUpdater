@@ -42,7 +42,7 @@ function iterateRefTextareas(textareas)
             let status = document.getElementById(this.dataset.textarea + '_status')
             this.disabled = true;
             status.disabled = true
-            preloadReference(this.dataset.textarea)
+            preloadReference(this.dataset.textarea, 'refresh')
         })
 
         let status = document.createElement('button')
@@ -87,7 +87,7 @@ function iterateRefTextareas(textareas)
     }
 }
 
-function preloadReference(textareaId) {
+function preloadReference(textareaId, cache = '') {
 
     let el = document.getElementById(textareaId)
     let htmlReference = el.innerHTML
@@ -105,9 +105,7 @@ function preloadReference(textareaId) {
     status.classList.remove('hidden')
     status.innerText = 'Searching'
 
-    el.style.borderColor = "#65419b"
-
-    chrome.runtime.sendMessage({msg: htmlReference}, function ({data}) {
+    chrome.runtime.sendMessage({msg: htmlReference, cache: cache}, function ({data}) {
         button.disabled = false;
         button.innerText = "CiteItRight (click)"
 
