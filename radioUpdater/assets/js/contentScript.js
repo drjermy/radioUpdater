@@ -20,77 +20,21 @@ function iterateRefTextareas(textareas)
 {
     for (let i = 0; i < textareas.length; i++) {
 
+        let textarea = textareas[i]
+
         let actions = document.createElement('div')
 
-        let button = document.createElement('button');
-        button.classList.add('btn')
-        button.classList.add('btn-default')
-        button.style.marginTop = "1rem"
-        button.dataset.textarea = textareas[i].id
-        button.id = textareas[i].id + '_button'
-        button.appendChild(document.createTextNode("CiteItRight (hover)"));
-        button.addEventListener("mouseover", function (event) {
-            let status = document.getElementById(this.dataset.textarea + '_status')
-            if (status.classList.contains('hidden')) {
-                this.disabled = true;
-                status.disabled = true
-                preloadReference(this.dataset.textarea)
-            }
-        })
-        button.addEventListener("click", function (event) {
-            event.preventDefault()
-            let status = document.getElementById(this.dataset.textarea + '_status')
-            this.disabled = true;
-            status.disabled = true
-            preloadReference(this.dataset.textarea, 'refresh')
-        })
-
-        let status = document.createElement('button')
-        status.classList.add('btn')
-        status.classList.add('btn-secondary')
-        status.classList.add('hidden')
-        status.style.marginTop = "1rem"
-        status.style.marginLeft = '1rem'
-        status.dataset.textarea = textareas[i].id
-        status.id = textareas[i].id + '_status'
-        status.addEventListener("mouseover", function(event) {
-            let diffDiv = document.getElementById(this.dataset.textarea + '_diff')
-            if (diffDiv) {
-                diffDiv.classList.remove('hidden')
-            }
-            this.innerText = 'Update'
-        })
-        status.addEventListener("mouseout", function(event) {
-            let diffDiv = document.getElementById(this.dataset.textarea + '_diff')
-            if (diffDiv) {
-                diffDiv.classList.add('hidden')
-            }
-            this.innerText = 'Review'
-        })
-        status.addEventListener("click", function(event) {
-            event.preventDefault()
-            let textarea = document.getElementById(this.dataset.textarea)
-            let preDiv = document.getElementById(this.dataset.textarea + '_pre')
-            if (textarea && preDiv) {
-                textarea.innerHTML = preDiv.innerHTML
-                this.innerText = 'Match'
-                this.disabled = true
-                preDiv.remove()
-                document.getElementById(this.dataset.textarea + '_diff').remove()
-            }
-        })
-
-        actions.appendChild(button)
-        actions.appendChild(status)
+        actions.appendChild(citeItRightButton(textarea))
+        actions.appendChild(statusButton(textarea))
 
         textareas[i].parentNode.appendChild(actions);
     }
 }
 
-function preloadReference(textareaId, cache = '') {
+function preloadReference(textareaId, cache) {
 
     let el = document.getElementById(textareaId)
-    let htmlReference = el.innerHTML
+    let htmlReference = el.value
 
     let parent = el.parentNode
 
@@ -141,4 +85,98 @@ function preloadReference(textareaId, cache = '') {
         }
     });
 
+}
+
+function showDiff(el)
+{
+    el.innerText = 'Update'
+
+    let diffDiv = document.getElementById(el.dataset.textarea + '_diff')
+    if (diffDiv) {
+        diffDiv.classList.remove('hidden')
+    }
+}
+
+function hideDiff(el)
+{
+    el.innerText = 'Review'
+
+    let diffDiv = document.getElementById(el.dataset.textarea + '_diff')
+    if (diffDiv) {
+        diffDiv.classList.add('hidden')
+    }
+}
+
+function copyCitation(el)
+{
+    let textarea = document.getElementById(el.dataset.textarea)
+    let preDiv = document.getElementById(el.dataset.textarea + '_pre')
+
+    if (textarea && preDiv) {
+        textarea.innerHTML = preDiv.innerHTML
+        preDiv.remove()
+        document.getElementById(el.dataset.textarea + '_diff').remove()
+
+        el.innerText = 'Match'
+        el.disabled = true
+    }
+}
+
+function triggerLoad(el, cache = '')
+{
+    let status = document.getElementById(el.dataset.textarea + '_status')
+    status.disabled = true
+
+    el.disabled = true;
+    preloadReference(el.dataset.textarea, cache)
+}
+
+function createButton(buttonClass)
+{
+    let button = document.createElement('button');
+    button.classList.add('btn')
+    button.classList.add(buttonClass)
+    button.style.marginTop = "1rem"
+
+    return button
+}
+
+function citeItRightButton(textarea)
+{
+    let button = createButton('btn-default')
+    button.dataset.textarea = textarea.id
+    button.id = textarea.id + '_button'
+    button.appendChild(document.createTextNode("CiteItRight (hover)"));
+    button.addEventListener("mouseover", function (event) {
+        if (this.innerText === "CiteItRight (hover)") {
+            triggerLoad(this)
+        }
+    })
+    button.addEventListener("click", function (event) {
+        event.preventDefault()
+        triggerLoad(this, 'refresh')
+    })
+
+    return button;
+}
+
+function statusButton(textarea)
+{
+    let status = createButton('btn-secondary')
+    status.classList.add('hidden')
+    status.style.marginLeft = '1rem'
+    status.dataset.textarea = textarea.id
+    status.id = textarea.id + '_status'
+    status.addEventListener("mouseover", function(event) {
+        showDiff(this)
+    })
+    status.addEventListener("mouseout", function(event) {
+        hideDiff(this)
+    })
+    status.addEventListener("click", function(event) {
+        event.preventDefault()
+        copyCitation(this)
+    })
+
+    return status
 }
