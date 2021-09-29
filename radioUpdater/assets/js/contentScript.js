@@ -1,7 +1,7 @@
-updateArticleEdit();
+updateArticleEdit()
 
 function updateArticleEdit() {
-    let editReferenceBlock = document.getElementsByClassName('references');
+    let editReferenceBlock = document.getElementsByClassName('references')
 
     if (editReferenceBlock[0]) {
         iterateLinks(document.querySelectorAll('[data-citeitright]'))
@@ -21,13 +21,12 @@ function iterateRefTextareas(textareas)
     for (let i = 0; i < textareas.length; i++) {
 
         let textarea = textareas[i]
-
         let actions = document.createElement('div')
 
         actions.appendChild(citeItRightButton(textarea))
         actions.appendChild(statusButton(textarea))
 
-        textareas[i].parentNode.appendChild(actions);
+        textarea.parentNode.appendChild(actions)
     }
 }
 
@@ -50,26 +49,25 @@ function preloadReference(textareaId, cache) {
     status.innerText = 'Searching'
 
     chrome.runtime.sendMessage({msg: htmlReference, cache: cache}, function ({data}) {
-        button.disabled = false;
+        button.disabled = false
         button.innerText = "CiteItRight (click)"
 
-        if (data.error || ! data.citation) {
+        if (data.error) {
             status.innerText = 'Error'
+            status.style.backgroundColor = 'red'
         } else {
-
-            if (data.match) {
+            if (! data.citation) {
+                status.innerText = 'No citation'
+                status.style.backgroundColor = 'red'
+            } else if (data.match) {
                 status.innerText = 'Match'
             } else {
                 status.innerText = 'Review'
                 status.disabled = false
             }
 
-            let preDiv = document.createElement('div');
             let numberedCitation = document.createTextNode(data.index ? data.index + '. ' + data.citation : data.citation)
-            preDiv.id = el.id + '_pre'
-            preDiv.appendChild(numberedCitation)
-            preDiv.classList.add('preRef')
-            preDiv.classList.add('hidden')
+            let preDiv = createHiddenDiv(el.id + '_pre', numberedCitation)
             parent.appendChild(preDiv)
 
             if (parent.getElementsByClassName('differences').length === 0) {
@@ -83,7 +81,7 @@ function preloadReference(textareaId, cache) {
                 }
             }
         }
-    });
+    })
 
 }
 
@@ -127,13 +125,13 @@ function triggerLoad(el, cache = '')
     let status = document.getElementById(el.dataset.textarea + '_status')
     status.disabled = true
 
-    el.disabled = true;
+    el.disabled = true
     preloadReference(el.dataset.textarea, cache)
 }
 
 function createButton(buttonClass)
 {
-    let button = document.createElement('button');
+    let button = document.createElement('button')
     button.classList.add('btn')
     button.classList.add(buttonClass)
     button.style.marginTop = "1rem"
@@ -141,12 +139,22 @@ function createButton(buttonClass)
     return button
 }
 
+function createHiddenDiv(id, child)
+{
+    let hiddenDiv = document.createElement('div')
+    hiddenDiv.id = id
+    hiddenDiv.classList.add('hidden')
+    hiddenDiv.appendChild(child)
+
+    return hiddenDiv
+}
+
 function citeItRightButton(textarea)
 {
     let button = createButton('btn-default')
     button.dataset.textarea = textarea.id
     button.id = textarea.id + '_button'
-    button.appendChild(document.createTextNode("CiteItRight (hover)"));
+    button.appendChild(document.createTextNode("CiteItRight (hover)"))
     button.addEventListener("mouseover", function (event) {
         if (this.innerText === "CiteItRight (hover)") {
             triggerLoad(this)
@@ -157,7 +165,7 @@ function citeItRightButton(textarea)
         triggerLoad(this, 'refresh')
     })
 
-    return button;
+    return button
 }
 
 function statusButton(textarea)
