@@ -74,7 +74,6 @@ function preloadReference(textareaId, cache) {
     }
 
     if (! htmlReference) {
-        console.log(textareaId)
         button.disabled = false
         return null
     }
@@ -145,12 +144,27 @@ function copyCitation(el)
     let preDiv = document.getElementById(el.dataset.textarea + '_pre')
 
     if (textarea && preDiv) {
+        let undoDiv = createHiddenDiv(el.dataset.textarea + '_undo', document.createTextNode(textarea.value))
+        el.parentNode.appendChild(undoDiv)
+
         textarea.value = decodeHTML(preDiv.innerHTML)
         preDiv.remove()
         document.getElementById(el.dataset.textarea + '_diff').remove()
 
-        el.innerText = 'Match'
-        el.disabled = true
+        el.innerText = 'Undo'
+    }
+}
+
+function undoCitation(el)
+{
+    let textarea = document.getElementById(el.dataset.textarea)
+    let undoDiv = document.getElementById(el.dataset.textarea + '_undo')
+
+    if (textarea && undoDiv) {
+        textarea.value = decodeHTML(undoDiv.innerHTML)
+        undoDiv.remove()
+
+        el.classList.add('hidden')
     }
 }
 
@@ -224,14 +238,24 @@ function statusButton(textarea)
 function addStatusButtonListeners(el)
 {
     el.addEventListener("mouseover", function(event) {
-        showDiff(this)
+        if (this.innerText !== 'Undo') {
+            showDiff(this)
+        }
     })
     el.addEventListener("mouseout", function(event) {
-        hideDiff(this)
+        if (this.innerText !== 'Undo') {
+            hideDiff(this)
+        }
     })
     el.addEventListener("click", function(event) {
         event.preventDefault()
-        copyCitation(this)
+
+        if (this.innerText === 'Undo') {
+            undoCitation(this)
+        } else {
+            copyCitation(this)
+        }
+
     })
 }
 
