@@ -155,17 +155,23 @@ function citeItRightButton(textarea)
     button.dataset.textarea = textarea.id
     button.id = textarea.id + '_button'
     button.appendChild(document.createTextNode("CiteItRight (hover)"))
-    button.addEventListener("mouseover", function (event) {
+
+    addCiteItRightButtonListeners(button)
+
+    return button
+}
+
+function addCiteItRightButtonListeners(el)
+{
+    el.addEventListener("mouseover", function (event) {
         if (this.innerText === "CiteItRight (hover)") {
             triggerLoad(this)
         }
     })
-    button.addEventListener("click", function (event) {
+    el.addEventListener("click", function (event) {
         event.preventDefault()
         triggerLoad(this, 'refresh')
     })
-
-    return button
 }
 
 function statusButton(textarea)
@@ -175,16 +181,22 @@ function statusButton(textarea)
     status.style.marginLeft = '1rem'
     status.dataset.textarea = textarea.id
     status.id = textarea.id + '_status'
-    status.addEventListener("mouseover", function(event) {
+
+    addStatusButtonListeners(status)
+
+    return status
+}
+
+function addStatusButtonListeners(el)
+{
+    el.addEventListener("mouseover", function(event) {
         showDiff(this)
     })
-    status.addEventListener("mouseout", function(event) {
+    el.addEventListener("mouseout", function(event) {
         hideDiff(this)
     })
-    status.addEventListener("click", function(event) {
+    el.addEventListener("click", function(event) {
         event.preventDefault()
         copyCitation(this)
     })
-
-    return status
 }
