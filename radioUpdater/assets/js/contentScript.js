@@ -1,13 +1,36 @@
+addElementIds()
+
 updateArticleEdit()
 
-function updateArticleEdit() {
-    let editReferenceBlock = document.getElementsByClassName('references')
+function addElementIds()
+{
+    addIdByQuery('a.add.reference.btn', 'addReferenceButton')
+    addIdByQuery('fieldset.references', 'references')
+}
 
-    if (editReferenceBlock[0]) {
+function updateArticleEdit() {
+    let editReferenceBlock = document.getElementById('references')
+
+    if (editReferenceBlock) {
         iterateLinks(document.querySelectorAll('[data-citeitright]'))
 
-        iterateRefTextareas(editReferenceBlock[0].getElementsByTagName('textarea'))
+        iterateRefTextareas(editReferenceBlock.getElementsByTagName('textarea'))
     }
+
+    var observer = new MutationObserver( function(mutations) {
+        textareaId = mutations[0].addedNodes[0].querySelector('textarea').id
+
+        let button = document.getElementById(textareaId + '_button')
+        let status = document.getElementById(textareaId + '_status')
+
+        button.dataset.textarea = textareaId
+        status.dataset.textarea = textareaId
+
+        addCiteItRightButtonListeners(button)
+        addStatusButtonListeners(status)
+    } )
+
+    observer.observe(document.getElementById('references'), { attributes: true, childList: true, attributeOldValue: true })
 }
 
 function iterateLinks(links) {
@@ -40,44 +63,55 @@ function preloadReference(textareaId, cache) {
     let status = document.getElementById(el.id + '_status')
     let button = document.getElementById(el.id + '_button')
     let preDiv = document.getElementById(el.id + '_pre')
+    let diffDiv = document.getElementById(el.id + '_diff')
 
     if (preDiv) {
         preDiv.remove()
     }
 
+    if (diffDiv) {
+        diffDiv.remove()
+    }
+
+    if (! htmlReference) {
+        console.log(textareaId)
+        button.disabled = false
+        return null
+    }
+
     status.classList.remove('hidden')
-    status.innerText = 'Searching'
+    setStatus(status, 'Searching', '#74bcf7', true)
 
     chrome.runtime.sendMessage({msg: htmlReference, cache: cache}, function ({data}) {
         button.disabled = false
         button.innerText = "CiteItRight (click)"
 
         if (data.error) {
-            status.innerText = 'Error'
-            status.style.backgroundColor = 'red'
+            setStatus(status, 'Error', 'red', true)
         } else {
             if (! data.citation) {
-                status.innerText = 'No citation'
-                status.style.backgroundColor = 'red'
-            } else if (data.match) {
-                status.innerText = 'Match'
+                setStatus(status, 'No citation', 'red', true)
             } else {
-                status.innerText = 'Review'
-                status.disabled = false
-            }
 
-            let numberedCitation = document.createTextNode(data.index ? data.index + '. ' + data.citation : data.citation)
-            let preDiv = createHiddenDiv(el.id + '_pre', numberedCitation)
-            parent.appendChild(preDiv)
+                if (data.match) {
+                    setStatus(status, 'Match', '#74bcf7', true)
+                } else {
+                    setStatus(status, 'Review', '#74bcf7')
+                }
 
-            if (parent.getElementsByClassName('differences').length === 0) {
-                if (!data.match) {
-                    let diffDiv = document.createElement('div')
-                    diffDiv.id = el.id + '_diff'
-                    diffDiv.innerHTML = data.diff
-                    diffDiv.classList.add('differences')
-                    diffDiv.classList.add('hidden')
-                    parent.appendChild(diffDiv)
+                let numberedCitation = document.createTextNode(data.index ? data.index + '. ' + data.citation : data.citation)
+                let preDiv = createHiddenDiv(el.id + '_pre', numberedCitation)
+                parent.appendChild(preDiv)
+
+                if (parent.getElementsByClassName('differences').length === 0) {
+                    if (!data.match) {
+                        let diffDiv = document.createElement('div')
+                        diffDiv.id = el.id + '_diff'
+                        diffDiv.innerHTML = data.diff
+                        diffDiv.classList.add('differences')
+                        diffDiv.classList.add('hidden')
+                        parent.appendChild(diffDiv)
+                    }
                 }
             }
         }
@@ -111,7 +145,7 @@ function copyCitation(el)
     let preDiv = document.getElementById(el.dataset.textarea + '_pre')
 
     if (textarea && preDiv) {
-        textarea.innerHTML = preDiv.innerHTML
+        textarea.value = decodeHTML(preDiv.innerHTML)
         preDiv.remove()
         document.getElementById(el.dataset.textarea + '_diff').remove()
 
@@ -200,3 +234,24 @@ function addStatusButtonListeners(el)
         copyCitation(this)
     })
 }
+
+function setStatus(status, statusText, statusColour, disabled = false)
+{
+    status.style.backgroundColor = statusColour
+    status.innerText = statusText
+    status.disabled = disabled;
+}
+
+function addIdByQuery(query, id)
+{
+    let queryResult = document.querySelector(query)
+    if (queryResult) {
+        queryResult.id = id
+    }
+}
+
+let decodeHTML = function (html) {
+    let txt = document.createElement('textarea');
+    txt.innerHTML = html;
+    return txt.value;
+};
