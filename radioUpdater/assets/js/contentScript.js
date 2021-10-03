@@ -1,6 +1,7 @@
 addElementIds()
 
 updateArticleEdit()
+updateCaseEdit()
 
 function addElementIds()
 {
@@ -15,22 +16,35 @@ function updateArticleEdit() {
         iterateLinks(document.querySelectorAll('[data-citeitright]'))
 
         iterateRefTextareas(editReferenceBlock.getElementsByTagName('textarea'))
+
+        var observer = new MutationObserver( function(mutations) {
+            textareaId = mutations[0].addedNodes[0].querySelector('textarea').id
+            setupNewReference(textareaId)
+        } )
+
+        observer.observe(document.getElementById('references'), { attributes: true, childList: true, attributeOldValue: true })
     }
+}
 
-    var observer = new MutationObserver( function(mutations) {
-        textareaId = mutations[0].addedNodes[0].querySelector('textarea').id
+function updateCaseEdit() {
+    let editReferenceBlock = document.getElementById('case-references')
 
-        let button = document.getElementById(textareaId + '_button')
-        let status = document.getElementById(textareaId + '_status')
+    if (editReferenceBlock) {
+        iterateRefTextareas(editReferenceBlock.getElementsByTagName('textarea'))
 
-        button.dataset.textarea = textareaId
-        status.dataset.textarea = textareaId
+        var observer = new MutationObserver( function(mutations) {
+            if (mutations[0].target.parentElement.id === 'case-references' && mutations[0].type === 'childList') {
+                textarea = mutations[0].addedNodes[0].querySelector('textarea')
+                if (textarea) {
+                    textarea.style.width = '574px'
+                    textarea.closest('div').style.width = '600px'
+                    setupNewReference(textarea.id)
+                }
+            }
+        } )
 
-        addCiteItRightButtonListeners(button)
-        addStatusButtonListeners(status)
-    } )
-
-    observer.observe(document.getElementById('references'), { attributes: true, childList: true, attributeOldValue: true })
+        observer.observe(editReferenceBlock, { attributes: true, childList: true, subtree: true, attributeOldValue: true })
+    }
 }
 
 function iterateLinks(links) {
@@ -45,6 +59,7 @@ function iterateRefTextareas(textareas)
 
         let textarea = textareas[i]
         let actions = document.createElement('div')
+        actions.style.clear = 'left'
 
         actions.appendChild(citeItRightButton(textarea))
         actions.appendChild(statusButton(textarea))
@@ -171,6 +186,18 @@ function createHiddenDiv(id, child)
     return hiddenDiv
 }
 
+function setupNewReference(textareaId)
+{
+    let button = document.getElementById(textareaId + '_button')
+    let status = document.getElementById(textareaId + '_status')
+
+    button.dataset.textarea = textareaId
+    status.dataset.textarea = textareaId
+
+    addCiteItRightButtonListeners(button)
+    addStatusButtonListeners(status)
+}
+
 function citeItRightButton(textarea)
 {
     let button = createButton('btn-default')
@@ -284,7 +311,6 @@ function reportCitation(el)
     })
 
 }
-
 
 function setStatus(status, statusText, statusColour = '#74bcf7', disabled = false)
 {

@@ -11,3 +11,11 @@
 .diff-wrapper .new {
     display: block !important;
 }
+
+#case-references div.content_form_content {
+    width: 600px;
+}
+
+#case-references div.content_form_content textarea{
+    width: 95% !important;
+}
