@@ -1,6 +1,6 @@
 {
     "name": "RadioUpdater",
-    "version": "0.9",
+    "version": "0.10",
     "description": "Replace references on Radiopaedia.",
     "manifest_version": 3,
     "content_scripts": [
@@ -18,7 +18,8 @@
         }
     ],
     "host_permissions": [
-        "https://citeitright.co.uk/*"
+        "https://citeitright.co.uk/*",
+        "https://ai.radiopaedia.work/*"
     ],
     "background": {
         "service_worker": "background.js"
