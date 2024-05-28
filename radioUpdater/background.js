@@ -14,6 +14,20 @@ chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) 
                 senderResponse({ reported: false })
             })
         return true;
+
+    } else if(message.question) {
+
+        fetch('https://ai.radiopaedia.work/questions/api/' + message.question)
+            .then(response => response.text())
+            .then(data => {
+                let dataObj = JSON.parse(data)
+                senderResponse({ data: dataObj })
+            })
+            .catch(error => {
+                senderResponse({ question: false })
+            })
+        return true; // Will respond asynchronously.
+
     } else {
 
         let encodedRef = encodeURIComponent(message.msg)
@@ -34,6 +48,6 @@ chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) 
                     }
                 })
             })
-        return true;  // Will respond asynchronously.
+        return true; // Will respond asynchronously.
     }
 });
