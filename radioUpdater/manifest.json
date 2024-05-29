@@ -1,6 +1,6 @@
 {
     "name": "RadioUpdater",
-    "version": "1.0",
+    "version": "2.0",
     "description": "Replace references on Radiopaedia.",
     "manifest_version": 3,
     "content_scripts": [
