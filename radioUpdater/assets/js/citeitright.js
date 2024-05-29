@@ -1,4 +1,7 @@
 function updateArticleEdit() {
+    addIdByQuery('a.add.reference.btn', 'addReferenceButton')
+    addIdByQuery('fieldset.references', 'references')
+    
     let editReferenceBlock = document.getElementById('references')
 
     if (editReferenceBlock) {
