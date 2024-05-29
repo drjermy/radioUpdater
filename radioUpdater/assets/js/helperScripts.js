@@ -9,7 +9,11 @@ const decodeHTML = function (html) {
     let txt = document.createElement('textarea');
     txt.innerHTML = html;
     return txt.value;
-};
+}
+
+const insertAfter = function (referenceNode, newNode) {
+    referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+}
 
 function createButton(buttonClass)
 {
