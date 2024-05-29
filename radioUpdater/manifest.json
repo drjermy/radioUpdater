@@ -10,6 +10,9 @@
             ],
             "all_frames": true,
             "js": [
+                "assets/js/helperScripts.js",
+                "assets/js/questions.js",
+                "assets/js/citeitright.js",
                 "assets/js/contentScript.js"
             ],
             "css": [
