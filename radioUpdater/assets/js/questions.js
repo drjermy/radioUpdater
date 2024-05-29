@@ -1,7 +1,7 @@
 const relatedArticlesSection = document.getElementById('mcq-related-articles')
 
 function updateAutoQuestion() {
-
+    // Add the form.
     if (relatedArticlesSection) {
         const autoQuestionDiv = document.createElement('div')
         autoQuestionDiv.id = 'auto-questions'
@@ -65,22 +65,37 @@ function watchForArticleUpdates()
 
 function getNewQuestion() {
 
-    let questionButton = document.getElementById('auto-question-button')
-    questionButton.disabled = true;
-
+    // Get the question textarea.
     let questionTextarea = document.getElementById('for_multiple_choice_question_stem')
     let stemContent = questionTextarea.querySelectorAll('[contenteditable="true"]')[0]
     stemContent.id = 'question-content-textarea'
 
+    // Get the explanation textarea.
     let explanationContentEditable = document.getElementById('for_multiple_choice_question_explanation').querySelectorAll('[contenteditable="true"]')[0]
 
-    let article = document.getElementsByClassName('related-article-form-li')[0].getElementsByTagName('a')[0].getAttribute("href")
+    // Determine the type of question
+    let type = 'basic-factual'
+    let typeList = document.getElementsByClassName('question-category-titles')[0];
+    let activeType = kebabCase(typeList.getElementsByClassName('active')[0].innerText)
 
+    if (activeType === 'image-interpretation') {
+        alert("We can't auto-generate Image Interpretation questions yet. Change Type at the top of the page.")
+        return
+    }
+
+    // Disable the question generator button
+    let questionButton = document.getElementById('auto-question-button')
+    questionButton.disabled = true;
+
+    // Get the first related article
+    let article = document.getElementsByClassName('related-article-form-li')[0].getElementsByTagName('a')[0].getAttribute("href")
     article = article.substring(article.lastIndexOf('/') + 1)
 
+    // Generate a prompt
     let prompt = document.getElementById('auto-question-input').value
 
     let payload = {
+        type: activeType,
         article: article,
         prompt: prompt,
     }
@@ -88,6 +103,7 @@ function getNewQuestion() {
     chrome.runtime.sendMessage({question: payload}, function ({data}) {
 
         questionButton.disabled = false
+
         if (data.error) {
 
         } else {
@@ -125,7 +141,9 @@ function getNewQuestion() {
             let wrappedExplanation = document.createElement('p')
             wrappedExplanation.innerText = data.explanation
             explanationContentEditable.prepend(wrappedExplanation)
-            explanationContentEditable.querySelectorAll('[data-placeholder]')[0].remove()
+
+            questionButton.innerText = 'Regenerate'
+
         }
 
     });
