@@ -155,6 +155,7 @@ function statusButton(textarea)
     let status = createButton('btn-secondary')
     status.classList.add('hidden')
     status.style.marginLeft = '1rem'
+    status.style.marginTop = "1rem"
     status.dataset.textarea = textarea.id
     status.id = textarea.id + '_status'
 
@@ -206,6 +207,7 @@ function citeItRightButton(textarea)
     let button = createButton('btn-default')
     button.dataset.textarea = textarea.id
     button.id = textarea.id + '_button'
+    button.style.marginTop = "1rem"
     button.appendChild(document.createTextNode("CiteItRight (hover)"))
 
     addCiteItRightButtonListeners(button)
