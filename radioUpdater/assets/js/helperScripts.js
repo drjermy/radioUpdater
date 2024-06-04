@@ -2,6 +2,7 @@ const addIdByQuery = function (query, id) {
     let queryResult = document.querySelector(query)
     if (queryResult) {
         queryResult.id = id
+        return queryResult
     }
 }
 
