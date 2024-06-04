@@ -1,6 +1,8 @@
 const relatedArticlesSection = document.getElementById('mcq-related-articles')
+const articleName = new URLSearchParams(window.location.search).get('article');
 
 function updateAutoQuestion() {
+
     // Add the form.
     if (relatedArticlesSection) {
         const autoQuestionDiv = document.createElement('div')
@@ -32,17 +34,31 @@ function updateAutoQuestion() {
         questionButton.innerText = 'AutoQuestion'
         questionButton.style.display = 'inline-block'
         questionButton.id = 'auto-question-button'
-        questionButton.disabled = true
+
+        questionButton.disabled = ! articleName
         questionButton.addEventListener('mouseup', getNewQuestion)
 
         autoQuestionDiv.appendChild(questionLabel)
         autoQuestionDiv.appendChild(questionDesc)
+
         autoQuestionDiv.appendChild(questionInput)
         autoQuestionDiv.appendChild(questionButton)
+
+        if (articleName) {
+            const preSelectedArticle = document.createElement('p')
+            preSelectedArticle.classList.add('help-block')
+            preSelectedArticle.style.color = 'purple'
+            preSelectedArticle.id = 'preselected-article-warning'
+            preSelectedArticle.innerText = "Article: " + articleName + " will be used to create the question (set in the URL ?article=).";
+
+            autoQuestionDiv.appendChild(preSelectedArticle)
+        }
 
         insertAfter(relatedArticlesSection, autoQuestionDiv)
 
         watchForArticleUpdates()
+
+        questionButton.scrollIntoView()
     }
 }
 
@@ -56,6 +72,7 @@ function watchForArticleUpdates()
     if (relatedArticleList) {
         let observer = new MutationObserver( function() {
             document.getElementById('auto-question-button').disabled = relatedArticleList.childElementCount < 1
+            document.getElementById('preselected-article-warning').style.display = relatedArticleList.childElementCount < 1 ? 'block' : 'none'
         })
 
         observer.observe(relatedArticleList, { attributes: true, childList: true, attributeOldValue: true })
@@ -88,8 +105,16 @@ function getNewQuestion() {
     questionButton.disabled = true;
 
     // Get the first related article
-    let article = document.getElementsByClassName('related-article-form-li')[0].getElementsByTagName('a')[0].getAttribute("href")
-    article = article.substring(article.lastIndexOf('/') + 1)
+    let relatedArticles = document.getElementsByClassName('related-article-form-li')[0];
+
+    let article = null;
+    if (relatedArticles) {
+        article = relatedArticles.getElementsByTagName('a')[0].getAttribute("href").substring(article.lastIndexOf('/') + 1)
+    } else if (articleName) {
+        article = articleName
+    } else {
+        return
+    }
 
     // Generate a prompt
     let prompt = document.getElementById('auto-question-input').value
