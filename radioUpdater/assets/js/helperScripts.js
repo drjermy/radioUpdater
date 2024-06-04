@@ -2,6 +2,7 @@ const addIdByQuery = function (query, id) {
     let queryResult = document.querySelector(query)
     if (queryResult) {
         queryResult.id = id
+        return queryResult
     }
 }
 
@@ -20,7 +21,6 @@ function createButton(buttonClass)
     let button = document.createElement('button')
     button.classList.add('btn')
     button.classList.add(buttonClass)
-    button.style.marginTop = "1rem"
 
     return button
 }
