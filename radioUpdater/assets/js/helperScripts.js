@@ -20,7 +20,6 @@ function createButton(buttonClass)
     let button = document.createElement('button')
     button.classList.add('btn')
     button.classList.add(buttonClass)
-    button.style.marginTop = "1rem"
 
     return button
 }
