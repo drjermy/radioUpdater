@@ -72,7 +72,7 @@ function watchForArticleUpdates()
     if (relatedArticleList) {
         let observer = new MutationObserver( function() {
             document.getElementById('auto-question-button').disabled = relatedArticleList.childElementCount < 1
-            document.getElementById('preselected-article-warning').style.display = relatedArticleList.childElementCount < 1 ? 'block' : 'none'
+//            document.getElementById('preselected-article-warning').style.display = relatedArticleList.childElementCount < 1 ? 'block' : 'none'
         })
 
         observer.observe(relatedArticleList, { attributes: true, childList: true, attributeOldValue: true })
@@ -109,6 +109,7 @@ function getNewQuestion() {
 
     let article = null;
     if (relatedArticles) {
+        article = relatedArticles.getElementsByTagName('a')[0].getAttribute("href")
         article = relatedArticles.getElementsByTagName('a')[0].getAttribute("href").substring(article.lastIndexOf('/') + 1)
     } else if (articleName) {
         article = articleName
