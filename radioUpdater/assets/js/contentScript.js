@@ -1,6 +1,7 @@
-const pathname = window.location.pathname
+const pathname = window.location.pathname.split('?')[0].replace(/\/\s*$/, "")
 const articleType = pathname.split('/')[1]
 const finalPart = pathname.split('/').pop()
+
 const isEdit = finalPart === 'edit' || finalPart === 'new'
 
 if (articleType === 'articles' && isEdit) {
