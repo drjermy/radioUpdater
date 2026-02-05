@@ -1,3 +1,16 @@
+.radioupdater-reload-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: #d9534f;
+    color: white;
+    padding: 10px;
+    text-align: center;
+    z-index: 99999;
+    font-size: 14px;
+}
+
 .differences {
     clear:left;
     font-size: 1rem;
