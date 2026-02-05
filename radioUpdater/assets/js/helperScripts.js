@@ -33,3 +33,7 @@ function createHiddenDiv(id, child)
 
     return hiddenDiv
 }
+
+if (typeof module !== 'undefined') {
+    module.exports = { decodeHTML, sanitizeHTML, createButton, createHiddenDiv }
+}

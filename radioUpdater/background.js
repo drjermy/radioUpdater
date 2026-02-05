@@ -40,3 +40,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) 
         })
     return true;
 });
+
+if (typeof module !== 'undefined') {
+    module.exports = { fetchWithTimeout, FETCH_TIMEOUT }
+}
