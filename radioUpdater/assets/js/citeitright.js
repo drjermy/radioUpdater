@@ -246,11 +246,24 @@ function addCiteItRightButtonListeners(el)
 {
     el.addEventListener("mouseover", function () {
         if (this.dataset.state === 'ready') {
-            triggerLoad(this)
+            let button = this
+            button._hoverTimeout = setTimeout(function () {
+                triggerLoad(button)
+            }, 300)
+        }
+    })
+    el.addEventListener("mouseout", function () {
+        if (this._hoverTimeout) {
+            clearTimeout(this._hoverTimeout)
+            this._hoverTimeout = null
         }
     })
     el.addEventListener("click", function (event) {
         event.preventDefault()
+        if (this._hoverTimeout) {
+            clearTimeout(this._hoverTimeout)
+            this._hoverTimeout = null
+        }
         triggerLoad(this, 'refresh')
     })
 }
