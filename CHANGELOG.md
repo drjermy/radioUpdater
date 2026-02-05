@@ -18,7 +18,7 @@
 ### Added
 - README with installation, updating, and usage instructions for editors
 - Privacy policy (PRIVACY.md) for Chrome Web Store submission
-- Store listing draft with description, permission justifications, and asset checklist
+- Vitest test suite covering sanitizeHTML, decodeHTML, createButton, createHiddenDiv, and fetchWithTimeout
 
 ## 3.0
 
