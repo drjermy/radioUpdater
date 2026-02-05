@@ -10,8 +10,11 @@ function updateArticleEdit() {
         iterateRefTextareas(editReferenceBlock.getElementsByTagName('textarea'))
 
         let observer = new MutationObserver( function(mutations) {
-            let textareaId = mutations[0].addedNodes[0].querySelector('textarea').id
-            setupNewReference(textareaId)
+            let addedNode = mutations[0].addedNodes[0]
+            if (! addedNode) return
+            let textarea = addedNode.querySelector('textarea')
+            if (! textarea) return
+            setupNewReference(textarea.id)
         } )
 
         observer.observe(document.getElementById('references'), { attributes: true, childList: true, attributeOldValue: true })
@@ -248,7 +251,8 @@ function copyCitation(el)
 
         textarea.value = decodeHTML(preDiv.innerHTML)
         preDiv.remove()
-        document.getElementById(el.dataset.textarea + '_diff').remove()
+        let diffDiv = document.getElementById(el.dataset.textarea + '_diff')
+        if (diffDiv) diffDiv.remove()
 
         el.innerText = 'Undo'
     }

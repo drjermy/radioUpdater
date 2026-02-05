@@ -7,8 +7,12 @@ chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) 
         fetch('https://citeitright.co.uk/report?error=' + encodedError)
             .then(response => response.text())
             .then(data => {
-                let dataObj = JSON.parse(data)
-                senderResponse({data: dataObj})
+                try {
+                    let dataObj = JSON.parse(data)
+                    senderResponse({data: dataObj})
+                } catch (e) {
+                    senderResponse({ reported: false })
+                }
             })
             .catch(error => {
                 senderResponse({ reported: false })
@@ -23,8 +27,18 @@ chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) 
         fetch('https://citeitright.co.uk/rest?search=' + encodedRef + '&cache=' + cache)
             .then(response => response.text())
             .then(data => {
-                let dataObj = JSON.parse(data)
-                senderResponse({data: dataObj})
+                try {
+                    let dataObj = JSON.parse(data)
+                    senderResponse({data: dataObj})
+                } catch (e) {
+                    senderResponse({
+                        data: {
+                            search: message.msg,
+                            cache: cache,
+                            error: 'Invalid response from server'
+                        }
+                    })
+                }
             })
             .catch(error => {
                 senderResponse({
