@@ -91,10 +91,17 @@ function preloadReference(textareaId, cache) {
     status.classList.remove('hidden')
     setStatus(status, 'Searching', '#74bcf7', true)
 
-    chrome.runtime.sendMessage({msg: htmlReference, cache: cache}, function ({data}) {
+    chrome.runtime.sendMessage({msg: htmlReference, cache: cache}, function (response) {
         button.disabled = false
         button.dataset.state = 'loaded'
         button.innerText = "CiteItRight (click)"
+
+        if (chrome.runtime.lastError || ! response || ! response.data) {
+            setStatus(status, 'Error', 'red', true)
+            return
+        }
+
+        let data = response.data
 
         if (data.error) {
             setStatus(status, 'Error', 'red', true)
