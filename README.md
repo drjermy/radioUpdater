@@ -37,6 +37,23 @@ To update to a new version:
 4. If changes are suggested, the status button will show **Review** — hover it to preview the diff, click to apply
 5. Click **Undo** on the status button if you want to revert
 
+## Testing
+
+Tests use [Vitest](https://vitest.dev/) with jsdom for DOM API support. The test suite covers the security-critical and utility functions — the parts where bugs are hardest to catch manually.
+
+```
+npm install
+npm test
+```
+
+**What's tested:**
+- `sanitizeHTML` — XSS prevention (script injection, event handler attributes, iframes, etc.)
+- `decodeHTML` — HTML entity decoding edge cases
+- `createButton` / `createHiddenDiv` — DOM helper output
+- `fetchWithTimeout` — timeout abort, error handling, option passthrough
+
+DOM manipulation and Chrome API integration (content scripts, message passing) are verified manually since they depend on the live Radiopaedia page and Chrome extension runtime.
+
 ## Credits
 
 Jeremy Jones, Community Director
