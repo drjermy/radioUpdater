@@ -1,3 +1,5 @@
+let requestInFlight = false
+
 function updateArticleEdit() {
     let editReferenceBlock = document.querySelector('fieldset.references')
 
@@ -96,11 +98,13 @@ function preloadReference(textareaId, cache) {
 
     status.classList.remove('hidden')
     setStatus(status, 'Searching', '#74bcf7', true)
+    requestInFlight = true
 
     let responded = false
     let responseTimeout = setTimeout(function () {
         if (! responded) {
             responded = true
+            requestInFlight = false
             button.disabled = false
             button.dataset.state = 'loaded'
             button.innerText = "CiteItRight (click)"
@@ -111,6 +115,7 @@ function preloadReference(textareaId, cache) {
     chrome.runtime.sendMessage({msg: htmlReference, cache: cache}, function (response) {
         if (responded) return
         responded = true
+        requestInFlight = false
         clearTimeout(responseTimeout)
 
         button.disabled = false
@@ -270,6 +275,8 @@ function addCiteItRightButtonListeners(el)
 
 function triggerLoad(el, cache = '')
 {
+    if (requestInFlight && cache !== 'refresh') return
+
     let status = document.getElementById(el.dataset.textarea + '_status')
     status.disabled = true
 
