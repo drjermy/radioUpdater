@@ -95,16 +95,11 @@ function preloadReference(textareaId, cache) {
         button.innerText = "CiteItRight (click)"
 
         if (data.error) {
-            setStatus(status, 'Report', 'red')
-            el.dataset.error = JSON.stringify(data)
+            setStatus(status, 'Error', 'red', true)
         } else {
             if (! data.citation) {
-                setStatus(status, 'Report', 'red')
-                el.dataset.error = JSON.stringify(data)
+                setStatus(status, 'Error', 'red', true)
             } else {
-
-                el.removeAttribute('data-error')
-
                 if (data.match) {
                     setStatus(status, 'Match', '#74bcf7', true)
                 } else {
@@ -180,9 +175,7 @@ function addStatusButtonListeners(el)
     el.addEventListener("click", function(event) {
         event.preventDefault()
 
-        if (this.dataset.state === 'report') {
-            reportCitation(this)
-        } else if (this.dataset.state === 'undo') {
+        if (this.dataset.state === 'undo') {
             undoCitation(this)
         } else {
             copyCitation(this)
@@ -265,30 +258,10 @@ function undoCitation(el)
 
     if (textarea && undoDiv) {
         textarea.value = decodeHTML(undoDiv.innerHTML)
-        textarea.dataset.error = JSON.stringify({
-            'search': undoDiv.innerHTML,
-            'error': 'User report'
-        })
         undoDiv.remove()
 
-        setStatus(el, 'Report', 'red')
+        el.classList.add('hidden')
     }
-}
-
-function reportCitation(el)
-{
-    let textarea = document.getElementById(el.dataset.textarea)
-
-    chrome.runtime.sendMessage({error: textarea.dataset.error}, function ({data}) {
-
-        if (data.id) {
-            setStatus(el, 'Reported')
-            el.disabled = true
-        } else {
-            setStatus(el, 'Reporting failed', 'red')
-        }
-    })
-
 }
 
 function setStatus(status, statusText, statusColour = '#74bcf7', disabled = false)
