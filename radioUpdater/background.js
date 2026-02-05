@@ -1,10 +1,22 @@
+const FETCH_TIMEOUT = 30000
+
+function fetchWithTimeout(url, options = {}) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
+
+    return fetch(url, { ...options, signal: controller.signal })
+        .finally(() => clearTimeout(timeout))
+}
+
 chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) {
 
     if (message.error) {
 
-        let encodedError = encodeURIComponent(message.error)
-
-        fetch('https://citeitright.co.uk/report?error=' + encodedError)
+        fetchWithTimeout('https://citeitright.co.uk/report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: message.error
+        })
             .then(response => response.text())
             .then(data => {
                 try {
@@ -24,7 +36,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) 
         let encodedRef = encodeURIComponent(message.msg)
         let cache = message.cache
 
-        fetch('https://citeitright.co.uk/rest?search=' + encodedRef + '&cache=' + cache)
+        fetchWithTimeout('https://citeitright.co.uk/rest?search=' + encodedRef + '&cache=' + cache)
             .then(response => response.text())
             .then(data => {
                 try {
@@ -45,10 +57,10 @@ chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) 
                     data: {
                         search: message.msg,
                         cache: cache,
-                        error: error
+                        error: 'Request failed or timed out'
                     }
                 })
             })
-        return true; // Will respond asynchronously.
+        return true;
     }
 });

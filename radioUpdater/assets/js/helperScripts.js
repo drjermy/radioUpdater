@@ -1,11 +1,3 @@
-const addIdByQuery = function (query, id) {
-    let queryResult = document.querySelector(query)
-    if (queryResult) {
-        queryResult.id = id
-        return queryResult
-    }
-}
-
 const decodeHTML = function (html) {
     let txt = document.createElement('textarea');
     txt.innerHTML = html;

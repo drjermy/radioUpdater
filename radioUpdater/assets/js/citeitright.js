@@ -1,8 +1,5 @@
 function updateArticleEdit() {
-    addIdByQuery('a.add.reference.btn', 'addReferenceButton')
-    addIdByQuery('fieldset.references', 'references')
-    
-    let editReferenceBlock = document.getElementById('references')
+    let editReferenceBlock = document.querySelector('fieldset.references')
 
     if (editReferenceBlock) {
         iterateLinks(document.querySelectorAll('[data-citeitright]'))
@@ -17,7 +14,7 @@ function updateArticleEdit() {
             setupNewReference(textarea.id)
         } )
 
-        observer.observe(document.getElementById('references'), { attributes: true, childList: true, attributeOldValue: true })
+        observer.observe(editReferenceBlock, { attributes: true, childList: true, attributeOldValue: true })
     }
 }
 
