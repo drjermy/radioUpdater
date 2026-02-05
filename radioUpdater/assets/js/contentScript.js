@@ -6,10 +6,6 @@ const isEdit = finalPart === 'edit' || finalPart === 'new'
 
 if (articleType === 'articles' && isEdit) {
     updateArticleEdit()
-} else if (articleType === 'articles') {
-    updateArticleView(finalPart)
 } else if (articleType === 'cases' && isEdit) {
     updateCaseEdit()
-} else if (articleType === 'questions' && isEdit) {
-    updateAutoQuestion()
 }

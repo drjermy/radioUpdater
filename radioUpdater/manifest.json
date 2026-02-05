@@ -11,8 +11,6 @@
             "all_frames": true,
             "js": [
                 "assets/js/helperScripts.js",
-                "assets/js/articles.js",
-                "assets/js/questions.js",
                 "assets/js/citeitright.js",
                 "assets/js/contentScript.js"
             ],
@@ -22,8 +20,7 @@
         }
     ],
     "host_permissions": [
-        "https://citeitright.co.uk/*",
-        "https://ai.radiopaedia.work/*"
+        "https://citeitright.co.uk/*"
     ],
     "background": {
         "service_worker": "background.js"

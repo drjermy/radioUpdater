@@ -15,20 +15,6 @@ chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) 
             })
         return true;
 
-    } else if(message.question) {
-
-        fetch('https://ai.radiopaedia.work/questions/' + message.question.type + '/' + message.question.article + '/' + message.question.prompt)
-            .then(response => response.text())
-            .then(data => {
-                let dataObj = JSON.parse(data)
-                senderResponse({ data: dataObj })
-            })
-            .catch(error => {
-                senderResponse({ question: false })
-            })
-
-        return true; // Will respond asynchronously.
-
     } else {
 
         let encodedRef = encodeURIComponent(message.msg)
