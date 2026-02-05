@@ -8,7 +8,7 @@
             "matches": [
                 "https://*.radiopaedia.org/*"
             ],
-            "all_frames": true,
+            "all_frames": false,
             "js": [
                 "assets/js/helperScripts.js",
                 "assets/js/citeitright.js",

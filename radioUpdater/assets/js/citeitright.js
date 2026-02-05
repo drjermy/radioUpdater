@@ -94,6 +94,7 @@ function preloadReference(textareaId, cache) {
 
     chrome.runtime.sendMessage({msg: htmlReference, cache: cache}, function ({data}) {
         button.disabled = false
+        button.dataset.state = 'loaded'
         button.innerText = "CiteItRight (click)"
 
         if (data.error) {
@@ -121,7 +122,7 @@ function preloadReference(textareaId, cache) {
                     if (!data.match) {
                         let diffDiv = document.createElement('div')
                         diffDiv.id = el.id + '_diff'
-                        diffDiv.innerHTML = data.diff
+                        diffDiv.innerHTML = sanitizeHTML(data.diff)
                         diffDiv.classList.add('differences')
                         diffDiv.classList.add('hidden')
                         parent.appendChild(diffDiv)
@@ -170,21 +171,21 @@ function statusButton(textarea)
 function addStatusButtonListeners(el)
 {
     el.addEventListener("mouseover", function() {
-        if (this.innerText === 'Review') {
+        if (this.dataset.state === 'review') {
             showDiff(this)
         }
     })
     el.addEventListener("mouseout", function() {
-        if (this.innerText === 'Update') {
+        if (this.dataset.state === 'review') {
             hideDiff(this)
         }
     })
     el.addEventListener("click", function(event) {
         event.preventDefault()
 
-        if (this.innerText === 'Report') {
+        if (this.dataset.state === 'report') {
             reportCitation(this)
-        } else if (this.innerText === 'Undo') {
+        } else if (this.dataset.state === 'undo') {
             undoCitation(this)
         } else {
             copyCitation(this)
@@ -211,6 +212,7 @@ function citeItRightButton(textarea)
     button.dataset.textarea = textarea.id
     button.id = textarea.id + '_button'
     button.style.marginTop = "1rem"
+    button.dataset.state = 'ready'
     button.appendChild(document.createTextNode("CiteItRight (hover)"))
 
     addCiteItRightButtonListeners(button)
@@ -221,7 +223,7 @@ function citeItRightButton(textarea)
 function addCiteItRightButtonListeners(el)
 {
     el.addEventListener("mouseover", function () {
-        if (this.innerText === "CiteItRight (hover)") {
+        if (this.dataset.state === 'ready') {
             triggerLoad(this)
         }
     })
@@ -254,6 +256,7 @@ function copyCitation(el)
         let diffDiv = document.getElementById(el.dataset.textarea + '_diff')
         if (diffDiv) diffDiv.remove()
 
+        el.dataset.state = 'undo'
         el.innerText = 'Undo'
     }
 }
@@ -293,6 +296,7 @@ function reportCitation(el)
 
 function setStatus(status, statusText, statusColour = '#74bcf7', disabled = false)
 {
+    status.dataset.state = statusText.toLowerCase().replace(/\s+/g, '-')
     status.style.backgroundColor = statusColour
     status.innerText = statusText
     status.disabled = disabled;
