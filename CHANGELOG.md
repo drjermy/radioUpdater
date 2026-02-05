@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.1
+
+### Fixed
+- setupNewReference now creates buttons for dynamically added references instead of crashing on null elements
+- MutationObserver null check in case edit pages (matching existing fix in article edit)
+- Duplicate event listeners no longer stack when MutationObserver fires repeatedly
+- Dropped message ports from rapid hovering no longer crash the extension
+- Stuck "Searching" state recovers after 35s if the service worker dies mid-request
+
+### Improved
+- Hover trigger debounced (300ms) so rapid mouse movement doesn't fire API calls
+- API requests serialized — only one hover-triggered request at a time
+- Extension context invalidation detected with a banner prompting the user to refresh
+- Graceful error handling when extension is reloaded while a page is open
+
+### Added
+- README with installation, updating, and usage instructions for editors
+- Privacy policy (PRIVACY.md) for Chrome Web Store submission
+- Store listing draft with description, permission justifications, and asset checklist
+
 ## 3.0
 
 ### Removed
