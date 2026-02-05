@@ -27,7 +27,9 @@ function updateCaseEdit() {
         let observer = new MutationObserver( function(mutations) {
             let textarea;
             if (mutations[0].target.parentElement.id === 'case-references' && mutations[0].type === 'childList') {
-                textarea = mutations[0].addedNodes[0].querySelector('textarea')
+                let addedNode = mutations[0].addedNodes[0]
+                if (! addedNode) return
+                textarea = addedNode.querySelector('textarea')
                 if (textarea) {
                     textarea.style.width = '574px'
                     textarea.closest('div').style.width = '600px'
@@ -186,14 +188,16 @@ function addStatusButtonListeners(el)
 
 function setupNewReference(textareaId)
 {
-    let button = document.getElementById(textareaId + '_button')
-    let status = document.getElementById(textareaId + '_status')
+    let textarea = document.getElementById(textareaId)
+    if (! textarea) return
 
-    button.dataset.textarea = textareaId
-    status.dataset.textarea = textareaId
+    let actions = document.createElement('div')
+    actions.style.clear = 'left'
 
-    addCiteItRightButtonListeners(button)
-    addStatusButtonListeners(status)
+    actions.appendChild(citeItRightButton(textarea))
+    actions.appendChild(statusButton(textarea))
+
+    textarea.parentNode.appendChild(actions)
 }
 
 function citeItRightButton(textarea)
