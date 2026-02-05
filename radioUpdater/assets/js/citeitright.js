@@ -88,6 +88,12 @@ function preloadReference(textareaId, cache) {
         return null
     }
 
+    if (! chrome.runtime?.id) {
+        button.disabled = false
+        setStatus(status, 'Reload extension', 'red', true)
+        return
+    }
+
     status.classList.remove('hidden')
     setStatus(status, 'Searching', '#74bcf7', true)
 
