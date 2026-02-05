@@ -29,6 +29,18 @@ No personal data is collected. Reference text is sent to citeitright.co.uk only 
 
 Productivity
 
+## Permission justifications
+
+These are entered per-permission in the Privacy tab of the developer dashboard.
+
+**Host permission: `https://*.radiopaedia.org/*`**
+
+This extension adds CiteItRight citation-checking buttons to reference fields on Radiopaedia article and case edit pages. Access to radiopaedia.org is required to inject these buttons into the page and read the reference text from form fields.
+
+**Host permission: `https://citeitright.co.uk/*`**
+
+Reference text from Radiopaedia edit page fields is sent to the CiteItRight API (citeitright.co.uk) for citation formatting and verification. This is the core functionality of the extension and requires access to this domain to make API requests from the background service worker.
+
 ## Single purpose
 
 Format and verify Radiopaedia article and case references using the CiteItRight citation service.
