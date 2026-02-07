@@ -1,6 +1,6 @@
 # RadioUpdater
 
-A Chrome extension for Radiopaedia editors that checks and formats references using [CiteItRight](https://citeitright.co.uk).
+A Chrome extension for Radiopaedia editors that checks and formats references using [Cite](https://radiopaedia.work/cite).
 
 ## What it does
 

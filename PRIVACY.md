@@ -4,7 +4,7 @@
 
 ## Overview
 
-RadioUpdater is a Chrome extension that helps Radiopaedia editors check and format article and case references using the CiteItRight service.
+RadioUpdater is a Chrome extension that helps Radiopaedia editors check and format article and case references using the Cite service.
 
 ## Data collection
 
@@ -12,24 +12,24 @@ RadioUpdater does **not** collect, store, or transmit any personal data. It does
 
 ## Data transmitted to external services
 
-When you use the CiteItRight feature on a Radiopaedia article or case edit page, the extension sends the **text content of individual reference fields** to the CiteItRight API (`citeitright.co.uk`) for citation formatting and verification. This happens only when you interact with the CiteItRight button (by hovering or clicking).
+When you use the Cite feature on a Radiopaedia article or case edit page, the extension sends the **text content of individual reference fields** to the Cite API (`radiopaedia.work/cite`) for citation formatting and verification. This happens only when you interact with the Cite button (by hovering or clicking).
 
 No other page content, browsing history, or personal information is sent.
 
 ## Data storage
 
-RadioUpdater does not store any data locally or remotely. Reference text is sent to the CiteItRight API for processing and the formatted result is displayed on the page. Nothing is persisted after you navigate away.
+RadioUpdater does not store any data locally or remotely. Reference text is sent to the Cite API for processing and the formatted result is displayed on the page. Nothing is persisted after you navigate away.
 
 ## Third-party services
 
 | Service | URL | Purpose | Data sent |
 |---------|-----|---------|-----------|
-| CiteItRight | citeitright.co.uk | Citation formatting and verification | Reference text from edit page fields |
+| Cite | radiopaedia.work/cite | Citation formatting and verification | Reference text from edit page fields |
 
 ## Permissions
 
-- **Host permission for `radiopaedia.org`** — required to add CiteItRight buttons to article and case edit pages
-- **Host permission for `citeitright.co.uk`** — required to send references for formatting
+- **Host permission for `radiopaedia.org`** — required to add Cite buttons to article and case edit pages
+- **Host permission for `radiopaedia.work`** — required to send references for formatting
 
 ## Changes to this policy
 

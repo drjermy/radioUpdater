@@ -13,7 +13,7 @@ chrome.runtime.onMessage.addListener(function (message, sender, senderResponse) 
     let encodedRef = encodeURIComponent(message.msg)
     let cache = message.cache
 
-    fetchWithTimeout('https://citeitright.co.uk/rest?search=' + encodedRef + '&cache=' + cache)
+    fetchWithTimeout('https://radiopaedia.work/cite/rest?search=' + encodedRef + '&cache=' + cache)
         .then(response => response.text())
         .then(data => {
             try {

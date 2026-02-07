@@ -58,7 +58,7 @@ function iterateRefTextareas(textareas)
         let actions = document.createElement('div')
         actions.style.clear = 'left'
 
-        actions.appendChild(citeItRightButton(textarea))
+        actions.appendChild(citeButton(textarea))
         actions.appendChild(statusButton(textarea))
 
         textarea.parentNode.appendChild(actions)
@@ -227,13 +227,13 @@ function setupNewReference(textareaId)
     let actions = document.createElement('div')
     actions.style.clear = 'left'
 
-    actions.appendChild(citeItRightButton(textarea))
+    actions.appendChild(citeButton(textarea))
     actions.appendChild(statusButton(textarea))
 
     textarea.parentNode.appendChild(actions)
 }
 
-function citeItRightButton(textarea)
+function citeButton(textarea)
 {
     let button = createButton('btn-default')
     button.dataset.textarea = textarea.id
@@ -242,12 +242,12 @@ function citeItRightButton(textarea)
     button.dataset.state = 'ready'
     button.appendChild(document.createTextNode("CiteItRight (hover)"))
 
-    addCiteItRightButtonListeners(button)
+    addCiteButtonListeners(button)
 
     return button
 }
 
-function addCiteItRightButtonListeners(el)
+function addCiteButtonListeners(el)
 {
     el.addEventListener("mouseover", function () {
         if (this.dataset.state === 'ready') {

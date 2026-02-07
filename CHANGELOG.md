@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.2
+
+### Changed
+- CiteItRight API migrated from citeitright.co.uk to radiopaedia.work/cite
+- Host permission updated from citeitright.co.uk to radiopaedia.work
+- Renamed citeitright.js to cite.js
+
 ## 3.1
 
 ### Fixed
