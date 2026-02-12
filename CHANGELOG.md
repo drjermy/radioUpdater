@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.2.1
+
+### Fixed
+- Duplicate CiteItRight button when Radiopaedia renders its native link after the extension loads (race condition)
+- Native CiteItRight links (leading to a 404) not removed on case edit pages
+- Duplicate extension buttons if MutationObserver fires multiple times for the same textarea
+
 ## 3.2
 
 ### Changed

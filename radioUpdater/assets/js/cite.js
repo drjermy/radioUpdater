@@ -9,6 +9,7 @@ function updateArticleEdit() {
         iterateRefTextareas(editReferenceBlock.getElementsByTagName('textarea'))
 
         let observer = new MutationObserver( function(mutations) {
+            iterateLinks(editReferenceBlock.querySelectorAll('[data-citeitright]'))
             let addedNode = mutations[0].addedNodes[0]
             if (! addedNode) return
             let textarea = addedNode.querySelector('textarea')
@@ -16,7 +17,7 @@ function updateArticleEdit() {
             setupNewReference(textarea.id)
         } )
 
-        observer.observe(editReferenceBlock, { attributes: true, childList: true, attributeOldValue: true })
+        observer.observe(editReferenceBlock, { attributes: true, childList: true, subtree: true, attributeOldValue: true })
     }
 }
 
@@ -24,9 +25,12 @@ function updateCaseEdit() {
     let editReferenceBlock = document.getElementById('case-references')
 
     if (editReferenceBlock) {
+        iterateLinks(document.querySelectorAll('[data-citeitright]'))
+
         iterateRefTextareas(editReferenceBlock.getElementsByTagName('textarea'))
 
         let observer = new MutationObserver( function(mutations) {
+            iterateLinks(editReferenceBlock.querySelectorAll('[data-citeitright]'))
             let textarea;
             if (mutations[0].target.parentElement.id === 'case-references' && mutations[0].type === 'childList') {
                 let addedNode = mutations[0].addedNodes[0]
@@ -223,6 +227,7 @@ function setupNewReference(textareaId)
 {
     let textarea = document.getElementById(textareaId)
     if (! textarea) return
+    if (document.getElementById(textareaId + '_button')) return
 
     let actions = document.createElement('div')
     actions.style.clear = 'left'
