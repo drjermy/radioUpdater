@@ -227,7 +227,12 @@ function setupNewReference(textareaId)
 {
     let textarea = document.getElementById(textareaId)
     if (! textarea) return
-    if (document.getElementById(textareaId + '_button')) return
+
+    let existingButton = document.getElementById(textareaId + '_button')
+    if (existingButton) {
+        if (existingButton.dataset.textarea === textareaId) return
+        existingButton.closest('div').remove()
+    }
 
     let actions = document.createElement('div')
     actions.style.clear = 'left'
