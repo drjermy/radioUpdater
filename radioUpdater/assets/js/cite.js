@@ -29,18 +29,13 @@ function updateCaseEdit() {
 
         iterateRefTextareas(editReferenceBlock.getElementsByTagName('textarea'))
 
-        let observer = new MutationObserver( function(mutations) {
+        let observer = new MutationObserver( function() {
             iterateLinks(editReferenceBlock.querySelectorAll('[data-citeitright]'))
-            let textarea;
-            if (mutations[0].target.parentElement.id === 'case-references' && mutations[0].type === 'childList') {
-                let addedNode = mutations[0].addedNodes[0]
-                if (! addedNode) return
-                textarea = addedNode.querySelector('textarea')
-                if (textarea) {
-                    textarea.style.width = '574px'
-                    textarea.closest('div').style.width = '600px'
-                    setupNewReference(textarea.id)
-                }
+            let textareas = editReferenceBlock.querySelectorAll('textarea:not([id$="-1_citation"])')
+            for (let textarea of textareas) {
+                textarea.style.width = '574px'
+                textarea.closest('div').style.width = '600px'
+                setupNewReference(textarea.id)
             }
         } )
 

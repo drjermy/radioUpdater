@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.3
+
+### Fixed
+- CiteItRight buttons not appearing on newly added article reference boxes (cloned template buttons had wrong data-textarea and no event listeners)
+- CiteItRight buttons not appearing on newly added case reference boxes (observer condition prevented detection of in-place DOM updates)
+
 ## 3.2.1
 
 ### Fixed
