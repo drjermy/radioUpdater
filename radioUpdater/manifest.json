@@ -1,6 +1,6 @@
 {
     "name": "RadioUpdater",
-    "version": "3.3",
+    "version": "3.4",
     "description": "Replace references on Radiopaedia.",
     "manifest_version": 3,
     "content_scripts": [
@@ -12,7 +12,8 @@
             "js": [
                 "assets/js/helperScripts.js",
                 "assets/js/cite.js",
-                "assets/js/contentScript.js"
+                "assets/js/contentScript.js",
+                "assets/js/reviewLink.js"
             ],
             "css": [
                 "assets/css/app.css"
