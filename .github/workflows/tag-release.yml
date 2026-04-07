@@ -1,0 +1,31 @@
+name: Tag Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'radioUpdater/manifest.json'
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from manifest
+        id: version
+        run: echo "version=v$(jq -r .version radioUpdater/manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag if it doesn't exist
+        run: |
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+            echo "Created tag $TAG"
+          fi
+        env:
+          TAG: ${{ steps.version.outputs.version }}
