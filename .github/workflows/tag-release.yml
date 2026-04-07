@@ -7,25 +7,61 @@ on:
       - 'radioUpdater/manifest.json'
 
 jobs:
-  tag:
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Read version from manifest
         id: version
         run: echo "version=v$(jq -r .version radioUpdater/manifest.json)" >> "$GITHUB_OUTPUT"
 
-      - name: Create tag if it doesn't exist
+      - name: Check if tag exists
+        id: check
         run: |
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists, skipping."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
           else
-            git tag "$TAG"
-            git push origin "$TAG"
-            echo "Created tag $TAG"
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
         env:
           TAG: ${{ steps.version.outputs.version }}
+
+      - name: Create tag
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          git tag "$TAG"
+          git push origin "$TAG"
+        env:
+          TAG: ${{ steps.version.outputs.version }}
+
+      - name: Generate release notes
+        if: steps.check.outputs.exists == 'false'
+        id: notes
+        run: |
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "$TAG" | head -1)
+          if [ -n "$PREV_TAG" ]; then
+            LOG=$(git log "$PREV_TAG"..HEAD --pretty=format:"- %s" --no-merges)
+          else
+            LOG=$(git log --pretty=format:"- %s" --no-merges)
+          fi
+          {
+            echo "notes<<EOF"
+            echo "$LOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ steps.version.outputs.version }}
+
+      - name: Create release
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          gh release create "$TAG" --title "$TAG" --notes "$NOTES"
+        env:
+          TAG: ${{ steps.version.outputs.version }}
+          NOTES: ${{ steps.notes.outputs.notes }}
+          GH_TOKEN: ${{ github.token }}
