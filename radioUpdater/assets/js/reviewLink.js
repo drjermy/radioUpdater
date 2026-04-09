@@ -44,8 +44,8 @@ function injectReviewLink(menu) {
     const slug = getArticleSlug()
     if (!slug) return
 
-    const cmeItem = menu.querySelector('a[href*="suitable_for_cme"]')
-    if (!cmeItem) return
+    const reportItem = menu.querySelector('a[href*="docs.google.com/forms"]')
+    if (!reportItem) return
 
     const li = document.createElement('li')
     const link = document.createElement('a')
@@ -61,7 +61,7 @@ function injectReviewLink(menu) {
     })
 
     li.appendChild(link)
-    cmeItem.closest('li').after(li)
+    reportItem.closest('li').before(li)
 }
 
 // Only run on article view pages (not edit/new)
