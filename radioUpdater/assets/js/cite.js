@@ -55,12 +55,14 @@ function iterateRefTextareas(textareas)
 
         let textarea = textareas[i]
         let actions = document.createElement('div')
-        actions.style.clear = 'left'
+        actions.className = 'radioupdater-actions'
 
         actions.appendChild(citeButton(textarea))
         actions.appendChild(statusButton(textarea))
 
         textarea.parentNode.appendChild(actions)
+
+        setupReferenceLinks(textarea)
     }
 }
 
@@ -230,12 +232,14 @@ function setupNewReference(textareaId)
     }
 
     let actions = document.createElement('div')
-    actions.style.clear = 'left'
+    actions.className = 'radioupdater-actions'
 
     actions.appendChild(citeButton(textarea))
     actions.appendChild(statusButton(textarea))
 
     textarea.parentNode.appendChild(actions)
+
+    setupReferenceLinks(textarea)
 }
 
 function citeButton(textarea)
@@ -303,6 +307,8 @@ function copyCitation(el)
         let diffDiv = document.getElementById(el.dataset.textarea + '_diff')
         if (diffDiv) diffDiv.remove()
 
+        renderReferenceLinks(textarea)
+
         el.dataset.state = 'undo'
         el.innerText = 'Undo'
     }
@@ -317,6 +323,8 @@ function undoCitation(el)
         textarea.value = decodeHTML(undoDiv.innerHTML)
         undoDiv.remove()
 
+        renderReferenceLinks(textarea)
+
         el.classList.add('hidden')
     }
 }
@@ -327,4 +335,79 @@ function setStatus(status, statusText, statusColour = '#74bcf7', disabled = fals
     status.style.backgroundColor = statusColour
     status.innerText = statusText
     status.disabled = disabled;
+}
+
+function extractReferenceLinks(text) {
+    let links = []
+    let doc = new DOMParser().parseFromString(text, 'text/html')
+    let anchors = doc.querySelectorAll('a[href]')
+
+    anchors.forEach(function (a) {
+        let href = a.getAttribute('href')
+        if (!href || href === '#') return
+        let label
+        if (/doi\.org\//i.test(href)) {
+            label = 'DOI'
+        } else {
+            label = a.textContent.trim() || hrefToLabel(href)
+        }
+        links.push({ label: label, url: href })
+    })
+
+    return links
+}
+
+function hrefToLabel(href) {
+    try {
+        let host = new URL(href).hostname.replace(/^www\./, '')
+        return host
+    } catch (_) {
+        return 'Link'
+    }
+}
+
+function renderReferenceLinks(textarea) {
+    let existingDiv = document.getElementById(textarea.id + '_reflinks')
+    if (existingDiv) existingDiv.remove()
+
+    let links = extractReferenceLinks(textarea.value)
+    if (links.length === 0) return
+
+    // Find the actions div for this textarea
+    let actionsDiv = document.getElementById(textarea.id + '_button')
+    actionsDiv = actionsDiv ? actionsDiv.closest('.radioupdater-actions') : null
+
+    let div = document.createElement('div')
+    div.id = textarea.id + '_reflinks'
+    div.className = 'radioupdater-reflinks'
+
+    links.forEach(function (link, i) {
+        if (i > 0) div.appendChild(document.createTextNode(' | '))
+        let a = document.createElement('a')
+        a.href = link.url
+        a.target = '_blank'
+        a.rel = 'noopener'
+        a.textContent = link.label
+        div.appendChild(a)
+    })
+
+    if (actionsDiv) {
+        actionsDiv.appendChild(div)
+    } else {
+        textarea.parentNode.appendChild(div)
+    }
+}
+
+function setupReferenceLinks(textarea) {
+    renderReferenceLinks(textarea)
+
+    if (!textarea.dataset.reflinksListening) {
+        textarea.dataset.reflinksListening = 'true'
+        textarea.addEventListener('change', function () { renderReferenceLinks(this) })
+        textarea.addEventListener('blur', function () { renderReferenceLinks(this) })
+    }
+}
+
+if (typeof module !== 'undefined') {
+    module.exports = { extractReferenceLinks }
 }

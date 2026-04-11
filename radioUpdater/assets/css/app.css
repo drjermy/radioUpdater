@@ -32,3 +32,24 @@
 #case-references div.content_form_content textarea{
     width: 95% !important;
 }
+
+.radioupdater-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    clear: left;
+}
+
+.radioupdater-reflinks {
+    font-size: 0.85rem;
+    margin-left: auto;
+}
+
+.radioupdater-reflinks a {
+    color: #337ab7;
+    text-decoration: none;
+}
+
+.radioupdater-reflinks a:hover {
+    text-decoration: underline;
+}
