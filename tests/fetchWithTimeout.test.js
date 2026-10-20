@@ -69,3 +69,30 @@ describe('fetchWithTimeout', () => {
     expect(FETCH_TIMEOUT).toBe(30000)
   })
 })
+
+describe('requestCitations', () => {
+  const { requestCitations } = require('../radioUpdater/background.js')
+
+  it('looks up a single reference at the citations endpoint', async () => {
+    let fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await requestCitations({ msg: 'Smith J & Jones K', cache: 'refresh' })
+
+    expect(fetchMock.mock.calls[0][0]).toBe('https://radiopaedia.work/api/v1/citations?search=Smith%20J%20%26%20Jones%20K&cache=refresh')
+    vi.unstubAllGlobals()
+  })
+
+  it('posts a batch of references as json', async () => {
+    let fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await requestCitations({ type: 'batch', references: ['a', 'b'] })
+
+    let [url, options] = fetchMock.mock.calls[0]
+    expect(url).toBe('https://radiopaedia.work/api/v1/citations/batch')
+    expect(options.method).toBe('POST')
+    expect(JSON.parse(options.body)).toEqual({ references: ['a', 'b'] })
+    vi.unstubAllGlobals()
+  })
+})
