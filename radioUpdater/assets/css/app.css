@@ -53,3 +53,7 @@
 .radioupdater-reflinks a:hover {
     text-decoration: underline;
 }
+
+.radioupdater-check-all {
+    margin-bottom: 1rem;
+}

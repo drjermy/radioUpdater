@@ -1,9 +1,14 @@
 let requestInFlight = false
+let checkAllRunning = false
+
+// radiopaedia.work cites up to ten references per batch request; five keeps each one quick.
+const CHECK_ALL_BATCH = 5
 
 function updateArticleEdit() {
     let editReferenceBlock = document.querySelector('fieldset.references')
 
     if (editReferenceBlock) {
+        addCheckAllButton(editReferenceBlock)
         iterateLinks(document.querySelectorAll('[data-citeitright]'))
 
         iterateRefTextareas(editReferenceBlock.getElementsByTagName('textarea'))
@@ -25,6 +30,7 @@ function updateCaseEdit() {
     let editReferenceBlock = document.getElementById('case-references')
 
     if (editReferenceBlock) {
+        addCheckAllButton(editReferenceBlock)
         iterateLinks(document.querySelectorAll('[data-citeitright]'))
 
         iterateRefTextareas(editReferenceBlock.getElementsByTagName('textarea'))
@@ -68,10 +74,39 @@ function iterateRefTextareas(textareas)
 
 function preloadReference(textareaId, cache) {
 
-    let el = document.getElementById(textareaId)
-    let htmlReference = el.value
+    if (! startReference(textareaId)) return
 
-    let parent = el.parentNode
+    let el = document.getElementById(textareaId)
+
+    let responded = false
+    let responseTimeout = setTimeout(function () {
+        if (! responded) {
+            responded = true
+            requestInFlight = false
+            showResult(textareaId, null)
+        }
+    }, 35000)
+
+    requestInFlight = true
+
+    chrome.runtime.sendMessage({msg: el.value, cache: cache}, function (response) {
+        if (responded) return
+        responded = true
+        requestInFlight = false
+        clearTimeout(responseTimeout)
+
+        showResult(textareaId, chrome.runtime.lastError ? null : response?.data)
+    })
+
+}
+
+/**
+ * Clear a reference's previous result and show it as searching. Returns false
+ * when there is nothing to look up.
+ */
+function startReference(textareaId) {
+
+    let el = document.getElementById(textareaId)
 
     let status = document.getElementById(el.id + '_status')
     let button = document.getElementById(el.id + '_button')
@@ -86,80 +121,155 @@ function preloadReference(textareaId, cache) {
         diffDiv.remove()
     }
 
-    if (! htmlReference) {
+    if (! el.value) {
         button.disabled = false
-        return null
+        return false
     }
 
     if (! chrome.runtime?.id) {
         button.disabled = false
         setStatus(status, 'Reload extension', 'red', true)
+        return false
+    }
+
+    button.disabled = true
+    status.classList.remove('hidden')
+    setStatus(status, 'Searching', '#74bcf7', true)
+
+    return true
+}
+
+/**
+ * Show a looked-up citation (or the error in its place) beside its reference.
+ */
+function showResult(textareaId, data) {
+
+    let el = document.getElementById(textareaId)
+    let parent = el.parentNode
+
+    let status = document.getElementById(el.id + '_status')
+    let button = document.getElementById(el.id + '_button')
+
+    button.disabled = false
+    button.dataset.state = 'loaded'
+    button.innerText = "CiteItRight (click)"
+
+    if (! data || data.error || ! data.citation) {
+        setStatus(status, data?.error === 'rate-limited' ? 'Rate limited' : 'Error', 'red', true)
         return
     }
 
-    status.classList.remove('hidden')
-    setStatus(status, 'Searching', '#74bcf7', true)
-    requestInFlight = true
+    if (data.match) {
+        setStatus(status, 'Match', '#74bcf7', true)
+    } else {
+        setStatus(status, 'Review', '#74bcf7')
+    }
 
-    let responded = false
-    let responseTimeout = setTimeout(function () {
-        if (! responded) {
-            responded = true
-            requestInFlight = false
-            button.disabled = false
-            button.dataset.state = 'loaded'
-            button.innerText = "CiteItRight (click)"
-            setStatus(status, 'Error', 'red', true)
+    let numberedCitation = document.createTextNode(data.index ? data.index + '. ' + data.citation : data.citation)
+    let preDiv = createHiddenDiv(el.id + '_pre', numberedCitation)
+    parent.appendChild(preDiv)
+
+    if (parent.getElementsByClassName('differences').length === 0) {
+        if (!data.match) {
+            let diffDiv = document.createElement('div')
+            diffDiv.id = el.id + '_diff'
+            diffDiv.innerHTML = sanitizeHTML(data.diff)
+            diffDiv.classList.add('differences')
+            diffDiv.classList.add('hidden')
+            parent.appendChild(diffDiv)
         }
-    }, 35000)
+    }
+}
 
-    chrome.runtime.sendMessage({msg: htmlReference, cache: cache}, function (response) {
-        if (responded) return
-        responded = true
-        requestInFlight = false
-        clearTimeout(responseTimeout)
+function addCheckAllButton(referenceBlock)
+{
+    if (document.getElementById('radioupdater-check-all')) return
 
-        button.disabled = false
-        button.dataset.state = 'loaded'
-        button.innerText = "CiteItRight (click)"
-
-        if (chrome.runtime.lastError || ! response || ! response.data) {
-            setStatus(status, 'Error', 'red', true)
-            return
-        }
-
-        let data = response.data
-
-        if (data.error) {
-            setStatus(status, 'Error', 'red', true)
-        } else {
-            if (! data.citation) {
-                setStatus(status, 'Error', 'red', true)
-            } else {
-                if (data.match) {
-                    setStatus(status, 'Match', '#74bcf7', true)
-                } else {
-                    setStatus(status, 'Review', '#74bcf7')
-                }
-
-                let numberedCitation = document.createTextNode(data.index ? data.index + '. ' + data.citation : data.citation)
-                let preDiv = createHiddenDiv(el.id + '_pre', numberedCitation)
-                parent.appendChild(preDiv)
-
-                if (parent.getElementsByClassName('differences').length === 0) {
-                    if (!data.match) {
-                        let diffDiv = document.createElement('div')
-                        diffDiv.id = el.id + '_diff'
-                        diffDiv.innerHTML = sanitizeHTML(data.diff)
-                        diffDiv.classList.add('differences')
-                        diffDiv.classList.add('hidden')
-                        parent.appendChild(diffDiv)
-                    }
-                }
-            }
-        }
+    let button = createButton('btn-default')
+    button.id = 'radioupdater-check-all'
+    button.innerText = 'Check all references'
+    button.addEventListener('click', function (event) {
+        event.preventDefault()
+        checkAllReferences(this, referenceBlock)
     })
 
+    // Outside the reference block, whose MutationObserver reacts to every change inside it.
+    let wrapper = document.createElement('div')
+    wrapper.className = 'radioupdater-check-all'
+    wrapper.appendChild(button)
+    referenceBlock.parentNode.insertBefore(wrapper, referenceBlock)
+}
+
+async function checkAllReferences(button, referenceBlock)
+{
+    if (checkAllRunning) return
+
+    let textareaIds = [...referenceBlock.querySelectorAll('textarea')]
+        .filter(textarea => textarea.value.trim() && document.getElementById(textarea.id + '_button')?.dataset.state === 'ready')
+        .map(textarea => textarea.id)
+
+    checkAllRunning = true
+    button.disabled = true
+
+    await checkInBatches(textareaIds, checkBatch, sleep, function (checked, total, retryAfter) {
+        button.innerText = retryAfter
+            ? 'Rate limited, retrying in ' + retryAfter + 's'
+            : 'Checking ' + checked + ' of ' + total
+    })
+
+    checkAllRunning = false
+    button.disabled = false
+    button.innerText = 'Check all references'
+}
+
+/**
+ * Sends references to the server a batch at a time, waiting for each batch before
+ * the next, and retries a rate-limited batch after the server's Retry-After (up to
+ * three attempts).
+ */
+async function checkInBatches(textareaIds, sendBatch, wait, onProgress = function () {})
+{
+    for (let start = 0; start < textareaIds.length; start += CHECK_ALL_BATCH) {
+        let batch = textareaIds.slice(start, start + CHECK_ALL_BATCH)
+        onProgress(start + batch.length, textareaIds.length)
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            let data = await sendBatch(batch)
+
+            if (data?.error !== 'rate-limited' || attempt === 3) break
+
+            onProgress(start + batch.length, textareaIds.length, data.retryAfter)
+            await wait(data.retryAfter * 1000)
+        }
+    }
+}
+
+/**
+ * Look up a batch of references in one request and show each result as it lands.
+ */
+function checkBatch(textareaIds)
+{
+    let ids = textareaIds.filter(startReference)
+
+    if (ids.length === 0) return Promise.resolve(null)
+
+    let references = ids.map(id => document.getElementById(id).value)
+
+    return new Promise(function (resolve) {
+        chrome.runtime.sendMessage({type: 'batch', references: references}, function (response) {
+            let data = chrome.runtime.lastError ? null : response?.data
+            let results = data?.results ?? []
+
+            ids.forEach((id, i) => showResult(id, results[i] ?? data))
+
+            resolve(data)
+        })
+    })
+}
+
+function sleep(ms)
+{
+    return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function showDiff(el)
@@ -284,12 +394,8 @@ function addCiteButtonListeners(el)
 
 function triggerLoad(el, cache = '')
 {
-    if (requestInFlight && cache !== 'refresh') return
+    if ((requestInFlight || checkAllRunning) && cache !== 'refresh') return
 
-    let status = document.getElementById(el.dataset.textarea + '_status')
-    status.disabled = true
-
-    el.disabled = true
     preloadReference(el.dataset.textarea, cache)
 }
 
@@ -409,5 +515,5 @@ function setupReferenceLinks(textarea) {
 }
 
 if (typeof module !== 'undefined') {
-    module.exports = { extractReferenceLinks }
+    module.exports = { extractReferenceLinks, checkInBatches, CHECK_ALL_BATCH, updateArticleEdit }
 }
