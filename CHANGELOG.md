@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.6
+
+### Added
+- "Check all references" button that checks every reference on the page in batches, retrying when rate-limited
+
+### Changed
+- Cite requests use the versioned radiopaedia.work API (`/api/v1/citations`)
+
+### Fixed
+- Error when the page adds non-element nodes (e.g. text) while the extension watches for new reference boxes
+
 ## 3.3
 
 ### Fixed
