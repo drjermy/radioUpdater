@@ -15,11 +15,14 @@ function updateArticleEdit() {
 
         let observer = new MutationObserver( function(mutations) {
             iterateLinks(editReferenceBlock.querySelectorAll('[data-citeitright]'))
-            let addedNode = mutations[0].addedNodes[0]
-            if (! addedNode) return
-            let textarea = addedNode.querySelector('textarea')
-            if (! textarea) return
-            setupNewReference(textarea.id)
+
+            // Status and button text changes add text nodes, so check every added element.
+            for (let mutation of mutations) {
+                for (let addedNode of mutation.addedNodes) {
+                    let textarea = addedNode.nodeType === Node.ELEMENT_NODE ? addedNode.querySelector('textarea') : null
+                    if (textarea) setupNewReference(textarea.id)
+                }
+            }
         } )
 
         observer.observe(editReferenceBlock, { attributes: true, childList: true, subtree: true, attributeOldValue: true })

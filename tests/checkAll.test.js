@@ -82,3 +82,27 @@ describe('Check all references button', () => {
     expect(button.innerText).toBe('Check all references')
   })
 })
+
+describe('Article reference observer', () => {
+  it('sets up a newly added reference even when a status text change comes first', async () => {
+    Object.assign(globalThis, require('../radioUpdater/assets/js/helperScripts.js'))
+    globalThis.chrome = { runtime: { id: 'test', sendMessage: vi.fn() } }
+    let errors = []
+    window.addEventListener('error', event => errors.push(event.error))
+
+    document.body.innerHTML = '<form><fieldset class="references">'
+      + '<div><textarea id="ref_1">first</textarea></div>'
+      + '</fieldset></form>'
+
+    const { updateArticleEdit } = require('../radioUpdater/assets/js/cite.js')
+    updateArticleEdit()
+
+    document.getElementById('ref_1_status').textContent = 'Searching' // as innerText does in a browser; jsdom's innerText adds no text node
+    let added = document.createElement('div')
+    added.innerHTML = '<textarea id="ref_2">second</textarea>'
+    document.querySelector('fieldset.references').appendChild(added)
+
+    await vi.waitFor(() => expect(document.getElementById('ref_2_button')).not.toBeNull())
+    expect(errors).toEqual([])
+  })
+})
