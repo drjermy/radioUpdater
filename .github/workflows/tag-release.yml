@@ -58,10 +58,14 @@ jobs:
         env:
           TAG: ${{ steps.version.outputs.version }}
 
+      - name: Build zip
+        if: steps.check.outputs.exists == 'false'
+        run: zip -qr radioUpdater.zip radioUpdater -x '*.DS_Store'
+
       - name: Create release
         if: steps.check.outputs.exists == 'false'
         run: |
-          gh release create "$TAG" --title "$TAG" --notes "$NOTES"
+          gh release create "$TAG" radioUpdater.zip --title "$TAG" --notes "$NOTES"
         env:
           TAG: ${{ steps.version.outputs.version }}
           NOTES: ${{ steps.notes.outputs.notes }}
