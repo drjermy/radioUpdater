@@ -1,9 +1,9 @@
 # Changelog
 
-## Unreleased
+## 3.7
 
 ### Added
-- Citation picker, by Giorgio (from his Radiopaedia Cite userscript): a button in the article editor's toolbar to cite the article's references at the caret, or look up a DOI, PMID, ISBN or URL and add it as the next reference, plus a special characters picker. Uninstall the userscript, or each editor gets two buttons.
+- Citation picker, by Giorgio (from his Radiopaedia Cite userscript): a button in the article editor's toolbar to cite the article's references at the caret, or look up a DOI, PMID, ISBN or URL and add it as the next reference, plus a special characters picker. Opened on an existing citation, it starts with that citation's references picked, to add to or remove from. Uninstall the userscript, or each editor gets two buttons.
 
 ## 3.6.3
 
