@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.6.2
+
+### Fixed
+- A reference link whose text is a long URL is labelled by its hostname
+
 ## 3.6.1
 
 ### Fixed
