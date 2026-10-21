@@ -12,11 +12,23 @@
             "js": [
                 "assets/js/helperScripts.js",
                 "assets/js/cite.js",
+                "assets/js/citePickerBridge.js",
                 "assets/js/contentScript.js",
                 "assets/js/reviewLink.js"
             ],
             "css": [
                 "assets/css/app.css"
+            ]
+        },
+        {
+            "matches": [
+                "https://*.radiopaedia.org/*"
+            ],
+            "all_frames": false,
+            "world": "MAIN",
+            "run_at": "document_idle",
+            "js": [
+                "assets/js/citePicker.js"
             ]
         }
     ],
