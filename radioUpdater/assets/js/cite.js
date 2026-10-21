@@ -157,6 +157,12 @@ function showResult(textareaId, data) {
     button.dataset.state = 'loaded'
     button.innerText = "CiteItRight (click)"
 
+    // A reference no source has isn't wrong, just unindexed: flag it for a manual check.
+    if (data?.reason === 'not-found') {
+        setStatus(status, 'Not found', '#f0ad4e', true)
+        return
+    }
+
     if (! data || data.error || ! data.citation) {
         setStatus(status, data?.error === 'rate-limited' ? 'Rate limited' : 'Error', 'red', true)
         return
