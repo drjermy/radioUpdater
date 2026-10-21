@@ -1596,7 +1596,9 @@
     panel.view = view;
     // A new query is a new list, and the row you were on is not in it. The
     // arrow keys move `at` afterwards; nothing that rebuilds preserves it.
-    panel.at = 0;
+    // radioUpdater: no row is highlighted until there is a search to match
+    // or the pointer or an arrow key picks one.
+    panel.at = terms.length ? 0 : -1;
   }
 
   /* A URL is two hundred characters long and this row is one line high. */
