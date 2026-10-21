@@ -867,6 +867,22 @@
           const up = raisedNear(target, sel);
           if (up && fold(up.textContent) === text) return up;
           if (target.root.contains(sup) && fold(sup.textContent) === text) return sup;
+
+          // radioUpdater: Tiptap can leave part of what was typed outside the
+          // superscript ("5-<sup>10</sup>"), so all of it is selected and raised
+          // with the shortcut, as a new marker is. Twice at most: on a selection
+          // that is only partly raised, a first press may lower it instead.
+          for (let tries = 0; tries < 2; tries++) {
+            const end = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+            end?.collapse(false);
+            const typed = end && textBefore(target, end, text.length);
+            if (!typed || fold(typed.toString()) !== text) break;
+            sel.removeAllRanges();
+            sel.addRange(typed);
+            if (!pressRaise(target)) break;
+            const raised = raisedNear(target, sel);
+            if (raised && fold(raised.textContent) === text) return raised;
+          }
         }
       }
     } catch { /* fall through to the assignment */ }
@@ -1088,6 +1104,37 @@
     over.setStart(node, at - text.length);
     over.setEnd(node, at);
     return over;
+  }
+
+  /* radioUpdater: the last `length` characters before the caret, as a range,
+   * however many text nodes they are spread across. */
+  function textBefore(target, caret, length) {
+    let node = caret.startContainer;
+    let at = caret.startOffset;
+    if (node.nodeType !== Node.TEXT_NODE) {
+      let before = node.childNodes[at - 1];
+      while (before && before.nodeType !== Node.TEXT_NODE) before = before.lastChild;
+      if (!before) return null;
+      node = before;
+      at = before.data.length;
+    }
+
+    const walker = target.doc.createTreeWalker(target.root, NodeFilter.SHOW_TEXT);
+    walker.currentNode = node;
+    const range = target.doc.createRange();
+    range.setEnd(node, at);
+
+    let need = length;
+    while (node) {
+      if (at >= need) {
+        range.setStart(node, at - need);
+        return range;
+      }
+      need -= at;
+      node = walker.previousNode();
+      at = node ? node.data.length : 0;
+    }
+    return null;
   }
 
   /* The superscript shortcut, pressed as a person would press it.
