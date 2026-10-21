@@ -2447,8 +2447,9 @@
        text-indent that pushes the label off the edge of the world. All of it
        has to go, or the button is there and takes the press and cannot be
        seen. The icon inside owes them nothing. */
-    /* radioUpdater: no colour of its own, so the icons match the toolbar's. */
+    /* radioUpdater: the dark grey of the toolbar's other icons. */
     .rcx-btn {
+      color:#333 !important;
       background-image:none !important;
       text-indent:0 !important;
       font-size:14px !important; line-height:1 !important; letter-spacing:normal !important;
