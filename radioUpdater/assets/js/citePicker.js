@@ -2366,26 +2366,22 @@
      thinner and shorter than the H3 beside it, which reads as "not quite a
      button". Omega for the characters, because a palette of things that are
      not on the keyboard has been called Ω for about thirty years. */
-  /* radioUpdater: redrawn in the style of the toolbar's own icons, which are
-   * Font Awesome Regular: outlines about 40 units thick in a 512-unit-high box. */
   const ICONS = {
-    // The quotation mark, as an outline: it is what a citation looks like
-    // everywhere else.
-    cite: { viewBox: '0 0 448 512', width: 40, line: [
-      'M196 256H64a40 40 0 0 1-40-40v-80a40 40 0 0 1 40-40h92a40 40 0 0 1 40 40v120c0 88-48 152-128 176',
-      'M420 256H288a40 40 0 0 1-40-40v-80a40 40 0 0 1 40-40h92a40 40 0 0 1 40 40v120c0 88-48 152-128 176',
-    ] },
+    // The quotation mark, filled: it is what a citation looks like everywhere
+    // else, and at nineteen pixels a solid shape stays a shape where a
+    // hairline stroke goes to mush.
+    cite: { fill: ['M6 17h3l2-4V7H5v6h3z', 'M14 17h3l2-4V7h-6v6h3z'] },
     // Omega, because a palette of things that are not on the keyboard has been
-    // called Ω for about thirty years.
-    chars: { viewBox: '0 0 512 512', width: 40, line: [
-      'M40 440h136v-40C112 368 72 304 72 232c0-96 80-168 184-168s184 72 184 168c0 72-40 136-104 168v40h136',
-    ] },
+    // called Ω for about thirty years. Stroked, like the toolbar's own icons.
+    chars: { line: ['M9.6 19.6c-2.3-1.5-3.6-3.8-3.6-6.5C6 8.9 8.7 5.4 12 5.4s6 3.5 6 7.7c0 2.7-1.3 5-3.6 6.5',
+                    'M5.4 19.6h4.6',
+                    'M14 19.6h4.6'] },
   };
 
   function icon(kind) {
     const shape = ICONS[kind] || ICONS.cite;
     const svg = document.createElementNS(ICON, 'svg');
-    svg.setAttribute('viewBox', shape.viewBox || '0 0 24 24');
+    svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('class', 'rcx-icon');
     svg.setAttribute('aria-hidden', 'true');
     for (const d of shape.fill || []) {
@@ -2399,7 +2395,7 @@
       path.setAttribute('d', d);
       path.setAttribute('fill', 'none');
       path.setAttribute('stroke', 'currentColor');
-      path.setAttribute('stroke-width', String(shape.width || 2.3));
+      path.setAttribute('stroke-width', '2.3');
       path.setAttribute('stroke-linecap', 'round');
       path.setAttribute('stroke-linejoin', 'round');
       svg.appendChild(path);
