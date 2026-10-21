@@ -851,6 +851,9 @@
    * The assignment is still here behind that, for a plain contenteditable with
    * nothing watching it, and for the tests. */
   function rewrite(target, sup, text) {
+    const viaTiptap = tiptapReplace(target, sup, text);
+    if (viaTiptap) return viaTiptap;
+
     const doc = target.doc;
     const sel = doc.getSelection?.();
     try {
@@ -867,22 +870,6 @@
           const up = raisedNear(target, sel);
           if (up && fold(up.textContent) === text) return up;
           if (target.root.contains(sup) && fold(sup.textContent) === text) return sup;
-
-          // radioUpdater: Tiptap can leave part of what was typed outside the
-          // superscript ("5-<sup>10</sup>"), so all of it is selected and raised
-          // with the shortcut, as a new marker is. Twice at most: on a selection
-          // that is only partly raised, a first press may lower it instead.
-          for (let tries = 0; tries < 2; tries++) {
-            const end = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
-            end?.collapse(false);
-            const typed = end && textBefore(target, end, text.length);
-            if (!typed || fold(typed.toString()) !== text) break;
-            sel.removeAllRanges();
-            sel.addRange(typed);
-            if (!pressRaise(target)) break;
-            const raised = raisedNear(target, sel);
-            if (raised && fold(raised.textContent) === text) return raised;
-          }
         }
       }
     } catch { /* fall through to the assignment */ }
@@ -905,7 +892,8 @@
    * The DOM is the fallback, for a plain contenteditable with no editor around
    * it — and for the tests, where there is no `execCommand` to call. */
   function raiseHere(target, at, text, spaced) {
-    return byEditor(target, at, text, spaced)
+    return byTiptap(target, at, text, spaced)
+        || byEditor(target, at, text, spaced)
         || byCommand(target, at, text, spaced)
         || byNode(target, at, text, spaced);
   }
@@ -974,6 +962,51 @@
       return { node, wrote: true, raised: !!node, how: 'editor' };
     } catch {
       unwrite(gap);
+      return null;
+    }
+  }
+
+  /* radioUpdater: Radiopaedia's editor is Tiptap, which keeps its editor on the
+   * `.ProseMirror` element. Typing over a marker there leaves part of the new
+   * numbers outside the superscript ("5,<sup>10</sup>"), so where it is
+   * available the marker goes in through Tiptap's own commands instead, as
+   * text with the superscript mark on all of it. */
+  function tiptapFor(target) {
+    const ed = target.root?.editor || target.root?.closest?.('.ProseMirror')?.editor;
+    return ed?.view && typeof ed.commands?.insertContentAt === 'function' && ed.schema?.marks?.superscript
+      ? ed : null;
+  }
+
+  function tiptapSup(target, ed, text, at) {
+    const up = raisedFrom(target, ed.view.domAtPos(at).node);
+    return up && fold(up.textContent) === text ? up : null;
+  }
+
+  function byTiptap(target, at, text, spaced) {
+    const ed = tiptapFor(target);
+    if (!ed) return null;
+    try {
+      const pos = ed.view.posAtDOM(at.startContainer, at.startOffset);
+      const content = [{ type: 'text', text, marks: [{ type: 'superscript' }] }];
+      if (spaced) content.unshift({ type: 'text', text: ' ' });
+      if (!ed.chain().focus().insertContentAt(pos, content).run()) return null;
+      const node = tiptapSup(target, ed, text, pos + (spaced ? 2 : 1));
+      return { node, wrote: true, raised: !!node, how: 'tiptap' };
+    } catch {
+      return null;
+    }
+  }
+
+  function tiptapReplace(target, sup, text) {
+    const ed = tiptapFor(target);
+    if (!ed) return null;
+    try {
+      const from = ed.view.posAtDOM(sup, 0);
+      const to = ed.view.posAtDOM(sup, sup.childNodes.length);
+      const content = { type: 'text', text, marks: [{ type: 'superscript' }] };
+      if (!ed.chain().focus().insertContentAt({ from, to }, content).run()) return null;
+      return tiptapSup(target, ed, text, from + 1);
+    } catch {
       return null;
     }
   }
@@ -1104,37 +1137,6 @@
     over.setStart(node, at - text.length);
     over.setEnd(node, at);
     return over;
-  }
-
-  /* radioUpdater: the last `length` characters before the caret, as a range,
-   * however many text nodes they are spread across. */
-  function textBefore(target, caret, length) {
-    let node = caret.startContainer;
-    let at = caret.startOffset;
-    if (node.nodeType !== Node.TEXT_NODE) {
-      let before = node.childNodes[at - 1];
-      while (before && before.nodeType !== Node.TEXT_NODE) before = before.lastChild;
-      if (!before) return null;
-      node = before;
-      at = before.data.length;
-    }
-
-    const walker = target.doc.createTreeWalker(target.root, NodeFilter.SHOW_TEXT);
-    walker.currentNode = node;
-    const range = target.doc.createRange();
-    range.setEnd(node, at);
-
-    let need = length;
-    while (node) {
-      if (at >= need) {
-        range.setStart(node, at - need);
-        return range;
-      }
-      need -= at;
-      node = walker.previousNode();
-      at = node ? node.data.length : 0;
-    }
-    return null;
   }
 
   /* The superscript shortcut, pressed as a person would press it.
