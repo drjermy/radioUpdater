@@ -1466,6 +1466,13 @@
     panel.el = el;
 
     el.querySelector('.rcx-x').addEventListener('click', closePanel);
+    // radioUpdater: with the pointer off the list, no row is highlighted; the
+    // arrow keys bring the highlight back.
+    el.querySelector('.rcx-list').addEventListener('mouseleave', () => {
+      if (panel.at === -1) return;
+      panel.at = -1;
+      render();
+    });
     const q = el.querySelector('.rcx-q');
     q.addEventListener('input', () => { panel.query = q.value; recount(); render(); });
     q.addEventListener('keydown', onKey);
@@ -2115,6 +2122,7 @@
 
   function move(dir) {
     if (!panel.view.length) return;
+    if (panel.at === -1) panel.at = dir > 0 ? -1 : 0;
     panel.at = (panel.at + dir + panel.view.length) % panel.view.length;
     render();
   }
