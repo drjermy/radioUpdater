@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.6.3
+
+### Changed
+- A reference no source has shows an amber "Not found" instead of a red "Error"
+
 ## 3.6.2
 
 ### Fixed

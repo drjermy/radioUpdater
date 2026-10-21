@@ -1,6 +1,6 @@
 {
     "name": "RadioUpdater",
-    "version": "3.6.2",
+    "version": "3.6.3",
     "description": "Productivity tools for Radiopaedia editors.",
     "manifest_version": 3,
     "content_scripts": [
