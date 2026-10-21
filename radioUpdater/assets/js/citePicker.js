@@ -2090,6 +2090,10 @@
     panel.query = '';
     panel.el.querySelector('.rcx-q').value = '';
     recount();
+    // radioUpdater: the highlight stays on the reference just picked, rather than
+    // going back to the first row, where it looked as if that had been picked too.
+    const picked = panel.view.findIndex((item) => item.kind === 'ref' && +item.badge === n);
+    if (picked >= 0) panel.at = picked;
     render();
   }
 
