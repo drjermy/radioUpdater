@@ -744,14 +744,14 @@
    * `execCommand` or by writing HTML: `insertHTML` on a caret that sits inside
    * a `<sup>` produces a nested one, and a nested `<sup>` is a marker that
    * reads right and saves wrong. */
-  function insertCitation(target, numbers) {
+  function insertCitation(target, numbers, replace = false) {
     const range = liveCaret(target);
     if (!range) return { ok: false, why: 'caret' };
 
     const near = adjacentMarker(target, range);
     if (near) {
       const have = markerNumbers(near.textContent) || [];
-      const merged = markerText([...have, ...numbers]);
+      const merged = markerText(replace ? numbers : [...have, ...numbers]);
       if (merged === fold(near.textContent)) {
         settle(target, near);
         return { ok: true, marker: merged, merged: true, already: true };
@@ -1380,7 +1380,7 @@
   const editors = [];
   const panel = {
     el: null, target: null, button: null,
-    rows: [], view: [], at: 0, batch: [], query: '',
+    rows: [], view: [], at: 0, batch: [], query: '', marker: null,
     mode: 'pick',      // pick · asking · found · adding · trouble
     found: null, trouble: null, next: 1,
   };
@@ -1390,7 +1390,11 @@
     closeChars();
     panel.target = target;
     panel.button = button;
-    panel.batch = [];
+    // radioUpdater: opened on a citation marker, the panel starts with the
+    // marker's references picked, and return writes the picked set over it.
+    const caret = liveCaret(target);
+    panel.marker = caret ? adjacentMarker(target, caret) : null;
+    panel.batch = panel.marker ? markerNumbers(panel.marker.textContent) || [] : [];
     panel.query = '';
     panel.mode = 'pick';
     panel.found = null;
@@ -1614,7 +1618,7 @@
     }
 
     foot.textContent = panel.batch.length
-      ? `⏎  cite ${markerText(panel.batch)}    ⌘⏎  add another    esc  close`
+      ? `⏎  ${panel.marker ? 'change to' : 'cite'} ${markerText(panel.batch)}    ⌘⏎  add another    esc  close`
       : '↑↓  choose    ⏎  cite    ⌘⏎  cite several    esc  close';
     if (odd.length) {
       const warn = document.createElement('span');
@@ -2093,7 +2097,8 @@
 
   function citeNumbers(numbers) {
     const target = panel.target;
-    const out = insertCitation(target, numbers);
+    const replacing = !!panel.marker;
+    const out = insertCitation(target, numbers, replacing);
     if (!out.ok) {
       say('Click in the article text where the citation goes, then press again.', 'trouble');
       return;
@@ -2104,6 +2109,7 @@
                  'Select the number and press x¹.', 'trouble');
     }
     say(out.already ? `Already cited there — ${out.marker}`
+        : out.merged && replacing ? `Changed to ${out.marker}`
         : out.merged ? `Merged into ${out.marker}`
         : `Cited ${out.marker}`);
   }
