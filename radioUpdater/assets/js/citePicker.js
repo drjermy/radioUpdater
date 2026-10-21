@@ -2436,7 +2436,7 @@
       position:fixed; top:14px; right:14px; z-index:99997;
       padding:6px 12px; border-radius:2px;
       border:1px solid rgba(0,0,0,.1); border-bottom-color:rgba(0,0,0,.25);
-      background:#ededed; color:#5b2d90;
+      background:#ededed; color:#333;
       box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 2px 10px rgba(0,0,0,.18);
       font-family:"Open Sans", system-ui, -apple-system, sans-serif;
       font-size:12px; font-weight:600; line-height:18px; cursor:pointer;
@@ -2447,8 +2447,8 @@
        text-indent that pushes the label off the edge of the world. All of it
        has to go, or the button is there and takes the press and cannot be
        seen. The icon inside owes them nothing. */
+    /* radioUpdater: no colour of its own, so the icons match the toolbar's. */
     .rcx-btn {
-      color:#5b2d90 !important;
       background-image:none !important;
       text-indent:0 !important;
       font-size:14px !important; line-height:1 !important; letter-spacing:normal !important;
@@ -2482,12 +2482,7 @@
        hollow, unstroked paths solid. */
     .rcx-icon path[stroke] { fill:none !important; }
     .rcx-icon path:not([stroke]) { fill:currentColor !important; }
-    .rcx-btn:hover { color:#3f1f66 !important; }
-
-    .rcx-btn.rcx-open {
-      background:#5b2d90 !important; color:#fff !important; border-color:transparent !important;
-    }
-    .rcx-btn.rcx-open * { color:#fff !important; }
+    .rcx-btn.rcx-open { background:#ddd !important; }
 
     .rcx-panel {
       position:fixed; z-index:99998; width:min(560px, calc(100vw - 16px));
