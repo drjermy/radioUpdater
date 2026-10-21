@@ -458,7 +458,9 @@ function extractReferenceLinks(text) {
         if (/doi\.org\//i.test(href)) {
             label = 'DOI'
         } else {
-            label = a.textContent.trim() || hrefToLabel(href)
+            // A bare URL as link text is too long to show, so use its hostname.
+            let text = a.textContent.trim()
+            label = text && ! /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : hrefToLabel(href)
         }
         links.push({ label: label, url: href })
     })

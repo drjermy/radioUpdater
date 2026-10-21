@@ -31,6 +31,12 @@ describe('extractReferenceLinks', () => {
     expect(links).toEqual([{ label: 'ncbi.nlm.nih.gov', url: 'https://www.ncbi.nlm.nih.gov/pubmed/123' }])
   })
 
+  it('labels a link whose text is a URL by its hostname', () => {
+    let url = 'https://www.google.co.uk/books/edition/_/kGdrAAAAMAAJ?hl=en&gbpv=0&kptab=overview'
+    let links = extractReferenceLinks('<a href="' + url + '">' + url + '</a>')
+    expect(links).toEqual([{ label: 'google.co.uk', url: url }])
+  })
+
   it('handles Google Books link', () => {
     let text = '8. Richard S. Irwin. Intensive Care Medicine. (2008) ISBN: 9780781791533 - <a href="http://books.google.com/books?vid=ISBN9780781791533">Google Books</a>'
     let links = extractReferenceLinks(text)
