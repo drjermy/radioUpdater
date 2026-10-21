@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.6.1
+
+### Fixed
+- Status button right-aligned on references with no links to show
+
 ## 3.6
 
 ### Added
