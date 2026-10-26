@@ -28,6 +28,7 @@
             "world": "MAIN",
             "run_at": "document_idle",
             "js": [
+                "assets/js/renumber.js",
                 "assets/js/citePicker.js"
             ]
         }
