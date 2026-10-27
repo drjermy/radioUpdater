@@ -126,20 +126,9 @@
     return String(v ?? '').replace(/\s+/g, ' ').trim();
   }
 
-  /* Typography folded onto its plain forms, and the invisible characters taken
-   * out altogether. `\s` in JavaScript does not cover the zero-width space and
-   * Radiopaedia's text is full of them; one of those inside a `<sup>` is
-   * enough for a perfectly good marker to read as something that is not a
-   * marker at all. */
-  function fold(s) {
-    return String(s ?? '')
-      .replace(/[‘’ʼ]/g, "'")
-      .replace(/[“”]/g, '"')
-      .replace(/[–—−]/g, '-')
-      .replace(/[\u200b-\u200d\u2060\ufeff\u00ad]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
+  /* radioUpdater: `fold` and `markerNumbers` are in renumber.js, which loads
+   * first, so that its tests read citations with the same code as the page. */
+  const { fold, markerNumbers } = window.radioUpdaterRenumber;
 
   /* The text of something that arrived as markup. A reference is stored with
    * its `<a>` tags spelled out, and what a person reads in a list of them is
@@ -181,33 +170,6 @@
   }
 
   // ——————————————————————————————————————————————————————— the numbers
-
-  /* What a marker says, as numbers.
-   *
-   * `<sup>2,4,6</sup>`, `<sup>2-4</sup>`, `<sup>1</sup>` — and `null` for
-   * anything else, which is the answer that matters. A `<sup>` is not
-   * necessarily a citation: articles use it for units and for exponents, and
-   * merging a new reference number into `cm<sup>3</sup>` would be a strange
-   * way to lose an article. Only a superscript made of digits, commas and
-   * hyphens is one of ours, and even then a backwards or absurd range
-   * ("3-1", "1-400") is read as arithmetic rather than as a citation. */
-  function markerNumbers(text) {
-    const s = fold(text).replace(/\s+/g, '');
-    if (!s || !/^[\d,-]+$/.test(s)) return null;
-    const out = [];
-    for (const part of s.split(',')) {
-      const span = /^(\d{1,3})-(\d{1,3})$/.exec(part);
-      if (span) {
-        const from = +span[1], to = +span[2];
-        if (to <= from || to - from > 60) return null;
-        for (let n = from; n <= to; n++) out.push(n);
-        continue;
-      }
-      if (!/^\d{1,3}$/.test(part)) return null;
-      out.push(+part);
-    }
-    return out.length ? out : null;
-  }
 
   /* And back the other way: the numbers, sorted, deduplicated, with runs of
    * consecutive ones closed up into ranges. This is the only place a marker's
@@ -3029,8 +2991,14 @@
 
   /* Renumbering, from the page read once more: the preview may have stood open
    * while the form changed. If it would now do something other than what was
-   * shown, it is shown again instead. Afterwards the markers and the boxes are
-   * read back, and anything that did not take its new number is said. */
+   * shown, it is shown again instead.
+   *
+   * The citations go first and the reference boxes only after every citation
+   * has been written: a citation left with its old number beside a renumbered
+   * list would point at the wrong paper. If any citation cannot be written,
+   * the ones already written are put back, the boxes are not touched, and the
+   * preview stays open to say so. Afterwards the markers and the boxes are read
+   * back, and anything that did not take its new number is said. */
   function applySorting() {
     const shown = sorter.plan;
     const plan = sortingPlan();
@@ -3040,7 +3008,16 @@
     }
 
     const undo = { editors: [], rewritten: [], refs: [] };
-    writeCitations(plan.cites, undo);
+    if (!writeCitations(plan.cites, undo)) {
+      restoreText(undo);
+      sorter.plan = sortingPlan();
+      renderSorter();
+      sorter.el.querySelector('.rcx-list').prepend(note('Nothing was changed',
+        'A citation could not be rewritten, so the text was put back and the references were ' +
+        'left as they were. The text may have changed while the preview was open: check it, ' +
+        'then press Renumber again.', 'rcx-trouble'));
+      return;
+    }
     for (const ref of plan.changes) undo.refs.push({ input: ref.input, value: ref.input.value });
     for (const ref of plan.changes) setValue(ref.input, ref.value);
     undo.after = undoState(undo);
@@ -3060,7 +3037,8 @@
 
   /* The citations, in one transaction per Tiptap editor, so that one ctrl-Z in
    * the text undoes all of them. A field with no Tiptap behind it has each
-   * marker rewritten on its own, as the picker rewrites one. */
+   * marker rewritten on its own, as the picker rewrites one. False as soon as
+   * one cannot be written; what was written by then is in `undo`. */
   function writeCitations(cites, undo) {
     const byEditor = new Map();
     for (const cite of cites) {
@@ -3072,12 +3050,15 @@
       }
       const was = cite.sup.textContent;
       const node = rewrite(cite.target, cite.sup, cite.write);
-      if (node) undo.rewritten.push({ target: cite.target, node, text: was });
+      if (!node) return false;
+      undo.rewritten.push({ target: cite.target, node, text: was });
     }
     for (const [ed, group] of byEditor) {
-      undo.editors.push({ ed, json: ed.getJSON() });
-      tiptapRewriteAll(ed, group);
+      const json = ed.getJSON();
+      if (!tiptapRewriteAll(ed, group)) return false;
+      undo.editors.push({ ed, json });
     }
+    return true;
   }
 
   /* From the end of the document backwards, so that each replacement leaves
@@ -3094,6 +3075,10 @@
       })).sort((a, b) => b.from - a.from);
       const tr = state.tr;
       for (const { cite, from, to } of spots) {
+        // The marks of the citation's first character go on the whole new
+        // number. A citation whose characters carry different marks (half of
+        // it bold) comes out with the first character's: rare, and still a
+        // superscript.
         const marks = state.doc.nodeAt(from)?.marks || [];
         if (fold(state.doc.textBetween(from, to)) !== cite.text ||
             !marks.some((m) => m.type.name === 'superscript')) return false;
@@ -3135,13 +3120,20 @@
                  'Undoing puts them back as they were before renumbering, and those changes are lost.')) {
       return;
     }
-    for (const { ed, json } of undo.editors) ed.commands.setContent(json, { emitUpdate: true });
-    for (const { target, node, text } of undo.rewritten.reverse()) rewrite(target, node, text);
+    restoreText(undo);
     for (const { input, value } of undo.refs) setValue(input, value);
     sorter.undo = null;
     const button = document.getElementById(`${SORT_ID}-undo`);
     if (button) button.hidden = true;
     say('Put back as it was before renumbering.');
+  }
+
+  /* The text as it was before the citations were written: each Tiptap editor
+   * from its saved document, each other field marker by marker, the last
+   * written first. */
+  function restoreText(undo) {
+    for (const { ed, json } of undo.editors) ed.commands.setContent(json, { emitUpdate: true });
+    for (const { target, node, text } of [...undo.rewritten].reverse()) rewrite(target, node, text);
   }
 
   // ————————————————————————————————————————————————————— the looks
@@ -3387,7 +3379,7 @@
     .rcx-cite-diff.rcx-cite-on ins { box-shadow:0 0 0 2px #15803d; }
     .rcx-sort-btn { margin-left:6px; }
     .rcx-sort-btn[hidden] { display:none !important; }
-        .rcx-uncited { color:#b45309; }
+    .rcx-uncited { color:#b45309; }
     .rcx-sort-foot {
       display:flex; align-items:center; gap:6px; padding:7px 10px;
       border-top:1px solid rgba(0,0,0,.08); background:#fafafa;

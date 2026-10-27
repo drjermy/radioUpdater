@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-const { renumberPlan, renumberReference, classifySuperscript } = require('../radioUpdater/assets/js/renumber.js')
+const { renumberPlan, renumberReference, classifySuperscript, markerNumbers } = require('../radioUpdater/assets/js/renumber.js')
 
 describe('renumberPlan', () => {
   it('numbers the references in the order the text first cites them', () => {
@@ -72,17 +72,24 @@ describe('renumberReference', () => {
   })
 })
 
+describe('markerNumbers', () => {
+  it.each([
+    ['1', [1]], ['2,4,6', [2, 4, 6]], ['2-4', [2, 3, 4]], ['1, 3–5', [1, 3, 4, 5]], ['\u200b7', [7]],
+  ])('reads %s', (text, want) => {
+    expect(markerNumbers(text)).toEqual(want)
+  })
+
+  it.each(['3-1', '1-400', '2,', ',2', '3.', '99m', '-3', ''])('reads %s as no citation', text => {
+    expect(markerNumbers(text)).toBeNull()
+  })
+})
+
 describe('classifySuperscript', () => {
   // The references are numbered 1 to 20 unless a case says otherwise.
   let known = new Set(Array.from({ length: 20 }, (_, i) => i + 1))
-  let numbers = text => (/^\d{1,3}(?:[,-]\d{1,3})*$/.test(text)
-    ? text.split(',').flatMap(part => {
-      let [from, to] = part.split('-').map(Number)
-      return to ? Array.from({ length: to - from + 1 }, (_, i) => from + i) : [from]
-    })
-    : null)
+  // The numbers are read by the same markerNumbers the page uses.
   let read = (before, text, after, refs = known) =>
-    classifySuperscript({ before, text, after, numbers: numbers(text) }, refs)
+    classifySuperscript({ before, text, after, numbers: markerNumbers(text) }, refs)
 
   it.each([
     ['after a word, before a full stop', 'Gliomas are common ', '3', '. They enhance'],
@@ -98,6 +105,8 @@ describe('classifySuperscript', () => {
     ['after a large number', 'a prevalence of 1 in 100,000 ', '1', '.'],
     ['after a gene name', 'a mutation of NOTCH2 ', '4', '.'],
     ['after a measurement', 'by at least 5 mm ', '4-7', '.'],
+    ['after the full stop, before the next sentence', 'before skull base surgery.', '5', ' The study'],
+    ['after the full stop and a space', 'are common. ', '3', ' They enhance'],
   ])('reads a citation %s', (label, before, text, after) => {
     expect(read(before, text, after).kind).toBe('citation')
   })
@@ -111,7 +120,11 @@ describe('classifySuperscript', () => {
     ['¹⁸ fluorodeoxyglucose', 'with ', '18', ' fluorodeoxyglucose', 'element-after'],
     ['¹³ carbon', 'labelled with ', '13', ' carbon', 'element-after'],
     ['(¹⁸F)', 'the tracer (', '18', 'F) shows', 'no-space'],
-    ['a citation after the full stop', 'are common. ', '3', ' They enhance', 'capital-after'],
+    ['¹⁸ F after a full stop', 'on PET.', '18', ' F-FDG shows', 'capital-after'],
+    ['¹⁸ FDG after a full stop', 'on PET.', '18', ' FDG uptake', 'capital-after'],
+    ['an element symbol that starts a sentence', 'is rare.', '3', ' In addition', 'capital-after'],
+    ['an element name after a full stop', 'on PET.', '18', ' Fluorine-18 uptake', 'element-after'],
+    ['a capital with no full stop before', 'enhance ', '3', ' MRI shows', 'capital-after'],
     ['an exponent against a short word', 'E = 0.5mv', '2', ', where', 'no-space'],
     ['an exponent against a number', 'a pressure of 10', '5', ' pascals', 'no-space'],
     ['a citation against a comma', 'after the first episode 2,', '4,9,11', '. During', 'no-space'],
