@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.9
 
 ### Added
 - Hovering a citation in an article shows the references it cites, links included
