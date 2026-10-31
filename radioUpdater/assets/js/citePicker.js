@@ -222,7 +222,8 @@
     for (const input of document.querySelectorAll('textarea')) {
       const raw = fold(input.value);
       const numbered = REF_NUM.exec(raw);
-      const known = anchors.has(input);
+      // Inside the form's reference block it is a reference whatever it looks like, as cite.js has it.
+      const known = anchors.has(input) || !!input.closest('fieldset.references, #case-references');
       if (!known) {
         if (raw.length < 24 || !numbered || !REF_SIGNS.test(raw)) continue;
       } else if (raw.length < 8) {
@@ -2803,8 +2804,10 @@
     list.textContent = '';
     foot.textContent = '';
 
-    const changes = !plan.problems.length && (plan.changes.length > 0 || plan.cites.length > 0);
     const waiting = !plan.problems.length && plan.pending.length > 0;
+    // With no citations there is no citation order, only gaps in typed numbers, which the reference check reports.
+    const uncitedOnly = !plan.problems.length && !waiting && !plan.markers.length;
+    const changes = !uncitedOnly && !plan.problems.length && (plan.changes.length > 0 || plan.cites.length > 0);
     const ready = changes && !waiting;
     if (sorter.at >= plan.cites.length) sorter.at = -1;
     if (plan.problems.length) {
@@ -2812,6 +2815,8 @@
         plan.problems.map(problemText).join(' '), 'rcx-trouble'));
     } else if (!plan.rows.length) {
       list.appendChild(note('No references to renumber', 'The reference list is empty.'));
+    } else if (uncitedOnly) {
+      list.appendChild(note('No citations to renumber', 'The text cites none of the references.'));
     } else {
       if (plan.doubts.length) list.appendChild(doubtsSection(plan));
       if (changes) {
@@ -2836,12 +2841,12 @@
         'in amber first.'
       : ready ? 'Nothing is saved until you save the page.' : '';
     foot.appendChild(says);
+    foot.appendChild(footButton(changes || waiting ? 'Cancel' : 'Close', closeSorter));
     if (changes || waiting) {
       const go = footButton('Renumber', applySorting, true);
       go.disabled = !ready;
       foot.appendChild(go);
     }
-    foot.appendChild(footButton(changes || waiting ? 'Cancel' : 'Close', closeSorter));
     markCitations();
   }
 
@@ -3364,8 +3369,12 @@
     .rcx-step { padding:0 8px !important; line-height:18px !important; }
     .rcx-sort-group > summary {
       padding:6px 10px; cursor:pointer; color:#5b2d90; font-weight:600;
-      border-bottom:1px solid rgba(0,0,0,.06);
+      border-bottom:1px solid rgba(0,0,0,.06); list-style:none;
     }
+    .rcx-sort-group > summary::-webkit-details-marker { display:none; }
+    .rcx-sort-group > summary::before { content:'▸'; display:inline-block; width:14px; }
+    .rcx-sort-group[open] > summary::before { content:'▾'; }
+    .rcx-sort-group > summary:hover { text-decoration:underline; }
     .rcx-sort-row {
       display:flex; align-items:center; gap:6px; padding:2px 10px;
       border-bottom:1px solid rgba(0,0,0,.04);

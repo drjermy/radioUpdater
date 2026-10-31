@@ -172,4 +172,34 @@ describe('Renumber references', () => {
     expect(sups()).toEqual(AS_TYPED)
     button('Close').click()
   })
+
+  it('offers nothing when the text cites no reference, even with a gap in the numbers', () => {
+    document.querySelector('.text').innerHTML = '<p>No citations here.</p>'
+    let boxes = document.querySelectorAll('textarea')
+    boxes[0].value = REFS[0]
+    boxes[1].value = '3. Jones K. Never cited. AJR 2002;2:2.'
+    boxes[2].value = '4. Brown L. Incidence. AJR 2003;3:3.'
+
+    document.getElementById('radioupdater-renumber').click()
+
+    expect(panel().textContent).toContain('No citations to renumber')
+    expect(button('Renumber')).toBeUndefined()
+    button('Close').click()
+  })
+
+  it('counts a box in the reference block that has no link and looks like no citation', () => {
+    document.querySelector('.text').innerHTML = '<p>Atlas <sup>2</sup> and text <sup>1</sup>.</p>'
+    let boxes = document.querySelectorAll('textarea')
+    boxes[0].value = REFS[0]
+    boxes[1].value = "2. Clemete's Anatomy - Regional Atlas of the Human Body - 3rd Edition 044311868X"
+    boxes[1].nextElementSibling.remove()
+    boxes[2].value = REFS[2]
+
+    document.getElementById('radioupdater-renumber').click()
+
+    let rows = [...document.querySelectorAll('.rcx-sort-row')].map(row => row.textContent)
+    expect(rows[0]).toContain("Clemete's Anatomy")
+    expect(rows).toHaveLength(3)
+    button('Cancel').click()
+  })
 })
