@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.9
+
+### Added
+- Hovering a citation in an article shows the references it cites, links included
+
 ## 3.8
 
 ### Added

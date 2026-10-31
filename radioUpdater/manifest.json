@@ -1,6 +1,6 @@
 {
     "name": "RadioUpdater",
-    "version": "3.8.0",
+    "version": "3.9.0",
     "description": "Productivity tools for Radiopaedia editors.",
     "manifest_version": 3,
     "content_scripts": [
@@ -29,6 +29,7 @@
             "run_at": "document_idle",
             "js": [
                 "assets/js/renumber.js",
+                "assets/js/citeHover.js",
                 "assets/js/citePicker.js"
             ]
         }
