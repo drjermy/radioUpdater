@@ -941,7 +941,9 @@
   }
 
   function tiptapSup(target, ed, text, at) {
-    const up = raisedFrom(target, ed.view.domAtPos(at).node);
+    // A marker of one character ends at `at`, and the end of a mark belongs to
+    // the paragraph unless the side before it is asked for.
+    const up = raisedFrom(target, ed.view.domAtPos(at, -1).node);
     return up && fold(up.textContent) === text ? up : null;
   }
 

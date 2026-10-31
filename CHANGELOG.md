@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- The citation picker no longer says "this editor would not raise it" after citing a single-digit number, which was raised all along, and leaves the caret after the citation
+
 ## 3.9
 
 ### Added
