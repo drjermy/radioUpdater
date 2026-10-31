@@ -55,6 +55,7 @@
         const items = numbers.map((n) => refs.get(n))
         if (items.some((li) => !li)) return
 
+        sup.classList.add('rcx-cited')
         clearTimeout(hideTimer)
         show(sup, items)
     })

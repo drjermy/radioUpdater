@@ -29,5 +29,7 @@ describe('Citation hover', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     hover(2)
     expect(tip()).toBeNull()
+    expect(document.querySelectorAll('sup')[2].classList.contains('rcx-cited')).toBe(false)
+    expect(document.querySelectorAll('sup')[0].classList.contains('rcx-cited')).toBe(true)
   })
 })
