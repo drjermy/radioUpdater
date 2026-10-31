@@ -56,3 +56,23 @@
 .radioupdater-check-all {
     margin: 1rem 0;
 }
+
+.rcx-ref-tip {
+    position: fixed;
+    z-index: 99999;
+    max-width: 440px;
+    padding: 8px 10px;
+    background: #fff;
+    color: #333;
+    font-size: 13px;
+    line-height: 1.4;
+    border: 1px solid rgba(0, 0, 0, .15);
+    border-radius: 4px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .18);
+}
+
+.rcx-ref-tip > div + div {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0, 0, 0, .08);
+}
