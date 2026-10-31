@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.8
 
 ### Added
 - "Renumber references" button beside "Check all references": numbers the references in the order the text first cites them, as Zotero and EndNote do, and rewrites every citation to match. It shows every change first, with each citation that will change marked in the text in red and green, refuses a list with duplicate or missing numbers, and "Undo renumbering" puts the text and the references back. A superscript is renumbered only in a citation's position; one that could be a citation anywhere else (an isotope such as ¹⁸F, a number after a unit) is marked in amber and has to be decided first
