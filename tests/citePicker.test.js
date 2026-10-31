@@ -43,6 +43,7 @@ describe('citePicker', () => {
     document.documentElement.dataset.radioupdater = '9.9.9'
     vi.spyOn(console, 'info').mockImplementation(() => {})
 
+    require('../radioUpdater/assets/js/renumber.js')
     require('../radioUpdater/assets/js/citePicker.js')
 
     expect(window.radiopaediaCite.look().version).toBe('radioUpdater v9.9.9')

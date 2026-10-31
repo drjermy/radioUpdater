@@ -126,20 +126,9 @@
     return String(v ?? '').replace(/\s+/g, ' ').trim();
   }
 
-  /* Typography folded onto its plain forms, and the invisible characters taken
-   * out altogether. `\s` in JavaScript does not cover the zero-width space and
-   * Radiopaedia's text is full of them; one of those inside a `<sup>` is
-   * enough for a perfectly good marker to read as something that is not a
-   * marker at all. */
-  function fold(s) {
-    return String(s ?? '')
-      .replace(/[‘’ʼ]/g, "'")
-      .replace(/[“”]/g, '"')
-      .replace(/[–—−]/g, '-')
-      .replace(/[\u200b-\u200d\u2060\ufeff\u00ad]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
+  /* radioUpdater: `fold` and `markerNumbers` are in renumber.js, which loads
+   * first, so that its tests read citations with the same code as the page. */
+  const { fold, markerNumbers } = window.radioUpdaterRenumber;
 
   /* The text of something that arrived as markup. A reference is stored with
    * its `<a>` tags spelled out, and what a person reads in a list of them is
@@ -181,33 +170,6 @@
   }
 
   // ——————————————————————————————————————————————————————— the numbers
-
-  /* What a marker says, as numbers.
-   *
-   * `<sup>2,4,6</sup>`, `<sup>2-4</sup>`, `<sup>1</sup>` — and `null` for
-   * anything else, which is the answer that matters. A `<sup>` is not
-   * necessarily a citation: articles use it for units and for exponents, and
-   * merging a new reference number into `cm<sup>3</sup>` would be a strange
-   * way to lose an article. Only a superscript made of digits, commas and
-   * hyphens is one of ours, and even then a backwards or absurd range
-   * ("3-1", "1-400") is read as arithmetic rather than as a citation. */
-  function markerNumbers(text) {
-    const s = fold(text).replace(/\s+/g, '');
-    if (!s || !/^[\d,-]+$/.test(s)) return null;
-    const out = [];
-    for (const part of s.split(',')) {
-      const span = /^(\d{1,3})-(\d{1,3})$/.exec(part);
-      if (span) {
-        const from = +span[1], to = +span[2];
-        if (to <= from || to - from > 60) return null;
-        for (let n = from; n <= to; n++) out.push(n);
-        continue;
-      }
-      if (!/^\d{1,3}$/.test(part)) return null;
-      out.push(+part);
-    }
-    return out.length ? out : null;
-  }
 
   /* And back the other way: the numbers, sorted, deduplicated, with runs of
    * consecutive ones closed up into ranges. This is the only place a marker's
@@ -260,7 +222,8 @@
     for (const input of document.querySelectorAll('textarea')) {
       const raw = fold(input.value);
       const numbered = REF_NUM.exec(raw);
-      const known = anchors.has(input);
+      // Inside the form's reference block it is a reference whatever it looks like, as cite.js has it.
+      const known = anchors.has(input) || !!input.closest('fieldset.references, #case-references');
       if (!known) {
         if (raw.length < 24 || !numbered || !REF_SIGNS.test(raw)) continue;
       } else if (raw.length < 8) {
@@ -2488,6 +2451,696 @@
     openPanel(here, here.button);
   }
 
+  // ——————————————————————— radioUpdater: the references in citation order
+
+  /* "Renumber references", beside "Check all references".
+   *
+   * It numbers the references in the order the text first cites them, as
+   * Zotero and EndNote number a bibliography, and rewrites every citation to
+   * match: the first paper cited becomes 1, the next one not cited before
+   * becomes 2, and the references the text never cites go to the end in the
+   * order they were in. renumber.js works out the numbers. Nothing is written
+   * until Renumber is pressed in the preview, and "Undo renumbering" puts the
+   * text and the references back as they were. */
+  const SORT_ID = 'radioupdater-renumber';
+  const SORT_HINT = 'Number the references in the order the text first cites them, and rewrite ' +
+                    'every citation to match. Every change is shown before anything is written.';
+  const sorter = {
+    el: null, button: null, plan: null, undo: null, marks: [], decisions: new WeakMap(),
+    at: -1, lists: { order: false, skipped: false },
+  };
+
+  function mountSort() {
+    if (!inEditor() || document.getElementById(SORT_ID)) return;
+    const checkAll = document.getElementById('radioupdater-check-all');
+    if (!checkAll) return;
+
+    const button = sortButton(SORT_ID, 'Renumber references');
+    button.title = SORT_HINT;
+    const undo = sortButton(`${SORT_ID}-undo`, 'Undo renumbering');
+    undo.hidden = !sorter.undo;
+    checkAll.after(button, undo);
+
+    press(button, () => (sorter.el ? closeSorter() : openSorter(button)));
+    press(undo, undoSorting);
+  }
+
+  function sortButton(id, label) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.id = id;
+    button.className = 'btn btn-default rcx-sort-btn';
+    button.textContent = label;
+    return button;
+  }
+
+  /* Every superscript with a digit in it, in reading order: the fields in the
+   * order they stand on the page, and the superscripts in each field in the
+   * order of its text. renumber.js classifies each one, from its text and the
+   * text either side of it in its paragraph, as a citation, a doubt for the
+   * person to decide, or something that cannot be a citation. */
+  function numberedSuperscripts(known) {
+    const fields = editableWithin(document).sort((a, b) => (a.host === b.host ? 0
+      : a.host.compareDocumentPosition(b.host) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+    const found = [];
+    for (const target of fields) {
+      for (const sup of target.root.querySelectorAll('sup')) {
+        if (sup.closest('.rcx-panel') || sup.querySelector('sup')) continue;
+        const read = readSuperscript(sup, target.root);
+        if (!read) continue;
+        found.push({ target, sup, ...read, ...window.radioUpdaterRenumber.classify(read, known) });
+      }
+    }
+    return found;
+  }
+
+  /* A superscript as the classifier reads it: its text, the numbers it would
+   * cite, and the text either side of it. A space just inside the tag
+   * (`<sup>9 </sup>and`) is a space all the same, and is read as standing
+   * outside it. Null for a superscript with no digit in it. */
+  function readSuperscript(sup, root) {
+    const raw = sup.textContent.replace(INVISIBLE, '');
+    const text = fold(raw);
+    if (!/\d/.test(text)) return null;
+    return {
+      text,
+      raw,
+      numbers: markerNumbers(text),
+      before: besideText(sup, root, 'before') + (/^\s/.test(raw) ? ' ' : ''),
+      after: (/\s$/.test(raw) ? ' ' : '') + besideText(sup, root, 'after'),
+    };
+  }
+
+  const INVISIBLE = /[\u200b-\u200d\u2060\ufeff\u00ad]/g;
+  // What ends the text being read: a nested list, a new paragraph, a line break.
+  const BREAKS = 'P,LI,UL,OL,DL,DD,DT,H1,H2,H3,H4,H5,H6,TABLE,TR,TD,TH,BLOCKQUOTE,DIV,BR,HR'.split(',');
+
+  /* The paragraph's text on one side of a superscript, across any bold, link
+   * or other element in between, with the invisible characters taken out and
+   * the spaces left in: the spaces are part of what is being read. It stops
+   * at a nested list or a line break, which ends the text as surely as the
+   * end of the paragraph: "gravidarum <sup>2</sup><ul><li>also…" has nothing
+   * after the citation. */
+  function besideText(sup, root, side) {
+    const block = blockOf(sup, root);
+    const range = sup.ownerDocument.createRange();
+    try {
+      const wall = nearestBreak(block, sup, side);
+      if (side === 'before') {
+        if (wall) range.setStartAfter(wall); else range.setStart(block, 0);
+        range.setEndBefore(sup);
+      } else {
+        range.setStartAfter(sup);
+        if (wall) range.setEndBefore(wall); else range.setEnd(block, block.childNodes.length);
+      }
+    } catch { return ''; }
+    return range.toString().replace(INVISIBLE, '');
+  }
+
+  /* The break nearest the superscript on one side of it, inside its block. */
+  function nearestBreak(block, sup, side) {
+    const walker = sup.ownerDocument.createTreeWalker(block, NodeFilter.SHOW_ELEMENT);
+    let wall = null;
+    for (let el = walker.nextNode(); el; el = walker.nextNode()) {
+      if (!BREAKS.includes(el.tagName) || el.contains(sup)) continue;
+      const follows = sup.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING;
+      if (side === 'after' && follows) return el;
+      if (side === 'before' && !follows) wall = el;
+    }
+    return wall;
+  }
+
+  /* What renumbering would change, read from the page as it is now.
+   *
+   * A marker's number is the number written in front of a reference, and a
+   * reference with none written is known by its place in the list. The k-th
+   * box takes the text of the reference that comes k-th, with its number
+   * changed: the boxes stay where they are, because their fields are what
+   * Radiopaedia's nested form saves.
+   *
+   * A doubt counts as a citation once the person has said it is one, and is
+   * left alone once they have said it is not. While any doubt is undecided
+   * the plan can be shown but not applied. */
+  function sortingPlan() {
+    const rows = referenceBoxes();
+    const keys = rows.map((r) => r.n ?? r.pos);
+    const found = numberedSuperscripts(new Set(keys));
+    const choice = (f) => sorter.decisions.get(f.sup);
+    const markers = found.filter((f) =>
+      f.kind === 'citation' || f.kind === 'missing' || (f.kind === 'doubt' && choice(f) === 'cite'));
+    const renumber = window.radioUpdaterRenumber;
+    const said = renumber.plan(markers.map((m) => m.numbers), keys);
+    const plan = {
+      rows, found,
+      doubts: found.filter((f) => f.kind === 'doubt'),
+      pending: found.filter((f) => f.kind === 'doubt' && !choice(f)),
+      skipped: found.filter((f) => f.kind === 'skip' || (f.kind === 'doubt' && choice(f) === 'skip')),
+      problems: [
+        ...said.problems,
+        ...found.filter((f) => f.kind === 'malformed').map((f) => ({ kind: 'malformed', text: f.text })),
+      ],
+      markers: [], cites: [], refs: [], changes: [], expected: [], uncited: new Set(),
+    };
+    if (plan.problems.length) return plan;
+
+    plan.refs = said.order.map((from, k) => ({
+      input: rows[k].input,
+      from: rows[from],
+      n: k + 1,
+      value: renumber.reference(rows[from].input.value, k + 1),
+    }));
+    for (const ref of plan.refs) {
+      if (ref.from.typed && +REF_NUM.exec(fold(ref.value))?.[1] !== ref.n) {
+        plan.problems.push({ kind: 'unreadable', n: ref.from.n });
+      }
+    }
+    plan.uncited = new Set(said.uncited.map((i) => rows[i]));
+    // What is written keeps any space the marker had inside its tag.
+    plan.markers = markers.map((m, i) => {
+      const now = markerText(said.numbers[i]);
+      const [, lead, , trail] = /^(\s*)(.*?)(\s*)$/s.exec(m.raw);
+      return { ...m, now, write: lead + now + trail };
+    });
+    plan.cites = plan.markers.filter((m) => m.now !== m.text);
+    plan.changes = plan.refs.filter((r) => r.value !== r.input.value);
+    // Every numbered superscript as it should read afterwards, for checking.
+    const now = new Map(plan.markers.map((m) => [m.sup, m.now]));
+    plan.expected = found.map((f) => now.get(f.sup) ?? f.text);
+    return plan;
+  }
+
+  const signature = (plan) => JSON.stringify([
+    plan.problems, plan.pending.length, plan.refs.map((r) => r.value), plan.markers.map((m) => m.now),
+  ]);
+
+  function problemText(p) {
+    if (p.kind === 'duplicate') return `More than one reference is numbered ${p.n}.`;
+    if (p.kind === 'missing') return `The text cites ${p.n}, and no reference is numbered ${p.n}.`;
+    if (p.kind === 'malformed') return `A superscript reads "${p.text}", which is not a citation as written.`;
+    return `The number in front of reference ${p.n} could not be rewritten.`;
+  }
+
+  /* Why a superscript is a doubt, in the preview. */
+  const DOUBT_REASONS = {
+    'no-space': 'written against a capital, a digit, a comma or a short word: an exponent, or half a citation?',
+    'number-before': 'a small number comes before it: an exponent?',
+    'unit-before': 'a unit comes before it: mm², cm³?',
+    'letter-after': 'a letter or digit follows it directly: an isotope, such as ¹⁸F?',
+    'sign-after': 'a sign follows it directly: an isotope or a unit?',
+    'capital-after': 'a capital letter or digit follows it: an isotope, or a citation after the full stop?',
+    'element-after': 'the name of an element follows it: an isotope?',
+  };
+
+  function openSorter(button) {
+    closePanel();
+    closeChars();
+    closeSorter();
+    sorter.button = button;
+    sorter.plan = sortingPlan();
+
+    const el = document.createElement('div');
+    el.className = 'rcx-panel rcx-sorter';
+    el.innerHTML =
+      '<div class="rcx-head">' +
+        '<span class="rcx-lede">Renumber</span>' +
+        '<span class="rcx-where"></span>' +
+        '<button type="button" class="rcx-x" title="Close (esc)">×</button>' +
+      '</div>' +
+      '<div class="rcx-list"></div>' +
+      '<div class="rcx-sort-foot"></div>';
+    document.body.appendChild(el);
+    sorter.el = el;
+    sorter.at = -1;
+    button.classList.add('rcx-open');
+    el.querySelector('.rcx-x').addEventListener('click', closeSorter);
+
+    renderSorter();
+    placeSorter();
+    addEventListener('scroll', placeSorter, true);
+    addEventListener('resize', placeSorter);
+    document.addEventListener('keydown', escapeSorter, true);
+  }
+
+  function closeSorter() {
+    if (!sorter.el) return;
+    removeEventListener('scroll', placeSorter, true);
+    removeEventListener('resize', placeSorter);
+    document.removeEventListener('keydown', escapeSorter, true);
+    unmarkCitations();
+    sorter.el.remove();
+    sorter.el = null;
+    sorter.button?.classList.remove('rcx-open');
+    sorter.button = null;
+  }
+
+  /* The preview stands in the bottom right corner of the window, small, so
+   * that the text and the marks on it stay in view; a click in the text does
+   * not close it, so the text can be read and scrolled while it is open. */
+  const placeSorter = () => {
+    if (!sorter.el || !sorter.button?.isConnected) return closeSorter();
+    placeMarks();
+  };
+
+  /* The preview in the text as well, coloured as the reference checker shows
+   * a reference's changes: each citation that will change has its number
+   * struck through in red, and the number it will have in green just after
+   * it. Neither is part of the text. The red is a CSS highlight over the
+   * citation's own characters, and the green is drawn on the page above the
+   * editor, so nothing in the editor changes until Renumber is pressed. A
+   * browser without CSS highlights gets both numbers in the green's place.
+   *
+   * The doubts still to be decided are lit up in amber the same way, or get
+   * an amber "?" beside them. */
+  const OLD_HIGHLIGHT = 'rcx-renumber-old';
+  const DOUBT_HIGHLIGHT = 'rcx-renumber-doubt';
+
+  function markCitations() {
+    unmarkCitations();
+    const page = typeof Highlight === 'function' && window.CSS?.highlights;
+    const old = page ? new Highlight() : null;
+    const doubt = page ? new Highlight() : null;
+    const lit = (highlight, sup) => {
+      if (!highlight || sup.ownerDocument !== document) return false;
+      const range = document.createRange();
+      range.selectNodeContents(sup);
+      highlight.add(range);
+      return true;
+    };
+    const mark = (cite, ...parts) => {
+      const el = document.createElement('span');
+      el.className = 'rcx-cite-diff';
+      for (const [tag, text] of parts) {
+        const part = document.createElement(tag);
+        part.textContent = text;
+        el.appendChild(part);
+      }
+      document.body.appendChild(el);
+      sorter.marks.push({ el, cite });
+    };
+
+    for (const cite of sorter.plan.cites) {
+      if (lit(old, cite.sup)) mark(cite, ['ins', cite.now]);
+      else mark(cite, ['del', cite.text], ['ins', cite.now]);
+    }
+    for (const f of sorter.plan.pending) {
+      if (!lit(doubt, f.sup)) mark(f, ['mark', '?']);
+    }
+    if (old?.size) page.set(OLD_HIGHLIGHT, old);
+    if (doubt?.size) page.set(DOUBT_HIGHLIGHT, doubt);
+  }
+
+  function unmarkCitations() {
+    for (const { el } of sorter.marks) el.remove();
+    sorter.marks = [];
+    window.CSS?.highlights?.delete(OLD_HIGHLIGHT);
+    window.CSS?.highlights?.delete(DOUBT_HIGHLIGHT);
+  }
+
+  /* Just after the citation and raised by half its own height, where it
+   * covers at most the tops of the next few letters and the gap above the
+   * line, and leaves the line above alone. Hidden whenever the citation
+   * itself cannot be seen. */
+  function placeMarks() {
+    for (const { el, cite } of sorter.marks) {
+      const frame = cite.target.frame?.getBoundingClientRect() || { left: 0, top: 0 };
+      const box = cite.sup.getBoundingClientRect();
+      el.hidden = !cite.sup.isConnected || (!box.width && !box.height) || !inSight(cite);
+      if (el.hidden) continue;
+      el.style.left = `${box.right + frame.left + 1}px`;
+      el.style.top = `${box.top + frame.top - el.offsetHeight / 2}px`;
+    }
+  }
+
+  /* Is the citation on screen? Asked of the page at the citation's own
+   * middle: the answer is the citation only when nothing hides it there. A
+   * citation scrolled out of the editor's box, out of the window, or under
+   * the editor's toolbar, which stays put while the text scrolls beneath it,
+   * answers with something else or nothing. The marks themselves take no
+   * pointer and are not in the way of the question. */
+  function inSight(cite) {
+    const doc = cite.sup.ownerDocument;
+    const box = cite.sup.getBoundingClientRect();
+    if (typeof doc.elementFromPoint !== 'function') {
+      const field = (cite.target.frame || cite.target.host).getBoundingClientRect();
+      return box.bottom > Math.max(0, field.top) && box.top < Math.min(innerHeight, field.bottom);
+    }
+    const hit = doc.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return !!hit && (hit === cite.sup || cite.sup.contains(hit));
+  }
+
+  const escapeSorter = (e) => {
+    if (e.key === 'Escape' && sorter.el) { e.stopPropagation(); closeSorter(); }
+  };
+
+  /* The preview: the doubts to decide, a way through the changes in the text,
+   * and, folded away until asked for, the list in its new order (each
+   * reference with the number it had) and the superscripts left alone. */
+  function renderSorter() {
+    const { el, plan } = sorter;
+    const where = el.querySelector('.rcx-where');
+    const list = el.querySelector('.rcx-list');
+    const foot = el.querySelector('.rcx-sort-foot');
+    where.textContent = '';
+    list.textContent = '';
+    foot.textContent = '';
+
+    const waiting = !plan.problems.length && plan.pending.length > 0;
+    // With no citations there is no citation order, only gaps in typed numbers, which the reference check reports.
+    const uncitedOnly = !plan.problems.length && !waiting && !plan.markers.length;
+    const changes = !uncitedOnly && !plan.problems.length && (plan.changes.length > 0 || plan.cites.length > 0);
+    const ready = changes && !waiting;
+    if (sorter.at >= plan.cites.length) sorter.at = -1;
+    if (plan.problems.length) {
+      list.appendChild(note('Fix these by hand first',
+        plan.problems.map(problemText).join(' '), 'rcx-trouble'));
+    } else if (!plan.rows.length) {
+      list.appendChild(note('No references to renumber', 'The reference list is empty.'));
+    } else if (uncitedOnly) {
+      list.appendChild(note('No citations to renumber', 'The text cites none of the references.'));
+    } else {
+      if (plan.doubts.length) list.appendChild(doubtsSection(plan));
+      if (changes) {
+        where.textContent = `${plan.changes.length} of ${plan.refs.length} references · ` +
+                            `${plan.cites.length} citations`;
+        if (plan.cites.length) list.appendChild(stepper(plan));
+        list.appendChild(folded('order', `References in the new order (${plan.refs.length})`,
+          plan.refs.map((ref) => sortRow(ref, plan.uncited.has(ref.from)))));
+      } else if (!waiting) {
+        list.appendChild(note('Already in citation order',
+          'Every reference is numbered in the order the text first cites it.'));
+      }
+    }
+    if (plan.skipped.length) {
+      list.appendChild(folded('skipped', `Left as they are (${plan.skipped.length})`, [skippedNote(plan.skipped)]));
+    }
+
+    const says = document.createElement('span');
+    says.className = 'rcx-sort-says';
+    says.textContent = waiting
+      ? `Decide the ${plan.pending.length === 1 ? 'superscript' : `${plan.pending.length} superscripts`} ` +
+        'in amber first.'
+      : ready ? 'Nothing is saved until you save the page.' : '';
+    foot.appendChild(says);
+    foot.appendChild(footButton(changes || waiting ? 'Cancel' : 'Close', closeSorter));
+    if (changes || waiting) {
+      const go = footButton('Renumber', applySorting, true);
+      go.disabled = !ready;
+      foot.appendChild(go);
+    }
+    markCitations();
+  }
+
+  /* One citation at a time: each press scrolls the text to the next citation
+   * that will change, in reading order, and outlines its new number. */
+  function stepper(plan) {
+    const el = document.createElement('div');
+    el.className = 'rcx-sort-steps';
+    const label = document.createElement('span');
+    label.className = 'rcx-step-label';
+    label.textContent = 'Changes in the text';
+    const at = document.createElement('span');
+    at.className = 'rcx-step-at';
+    at.textContent = sorter.at < 0 ? `${plan.cites.length}` : `${sorter.at + 1} / ${plan.cites.length}`;
+    const step = (dir, glyph, title) => {
+      const button = footButton(glyph, () => showCite(sorter.at < 0 && dir < 0 ? plan.cites.length - 1 : sorter.at + dir));
+      button.title = title;
+      button.classList.add('rcx-step');
+      return button;
+    };
+    el.append(label, step(-1, '‹', 'Previous change'), at, step(1, '›', 'Next change'));
+    return el;
+  }
+
+  function showCite(i) {
+    const cites = sorter.plan.cites;
+    if (!cites.length) return;
+    sorter.at = (i + cites.length) % cites.length;
+    const cite = cites.at(sorter.at);
+    cite.sup.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    for (const { el, cite: c } of sorter.marks) el.classList.toggle('rcx-cite-on', c === cite);
+    const at = sorter.el?.querySelector('.rcx-step-at');
+    if (at) at.textContent = `${sorter.at + 1} / ${cites.length}`;
+  }
+
+  /* A section that opens on a click, and stays open or closed across the
+   * preview being drawn again. */
+  function folded(key, label, children) {
+    const el = document.createElement('details');
+    el.className = 'rcx-sort-group';
+    el.open = sorter.lists[key];
+    el.addEventListener('toggle', () => { sorter.lists[key] = el.open; });
+    const head = document.createElement('summary');
+    head.textContent = label;
+    el.append(head, ...children);
+    return el;
+  }
+
+  /* The superscripts that could be citations and stand where citations do
+   * not, each with the words either side of it, why it is in doubt, and a
+   * choice. Decided ones stay in the list so that the choice can be changed.
+   * Clicking the words scrolls the superscript into view. */
+  function doubtsSection(plan) {
+    const el = document.createElement('div');
+    el.className = 'rcx-doubts';
+    const head = document.createElement('div');
+    head.className = 'rcx-note-head';
+    head.textContent = plan.pending.length
+      ? `Could ${plan.doubts.length === 1 ? 'this be a citation' : 'these be citations'}? ` +
+        `${plan.pending.length} of ${plan.doubts.length} to decide`
+      : `Checked: ${plan.doubts.length} superscript${plan.doubts.length === 1 ? '' : 's'}`;
+    el.appendChild(head);
+    for (const f of plan.doubts) el.appendChild(doubtRow(f));
+    return el;
+  }
+
+  function doubtRow(f) {
+    const row = document.createElement('div');
+    row.className = 'rcx-doubt';
+
+    const body = document.createElement('div');
+    body.className = 'rcx-doubt-body';
+    const words = document.createElement('div');
+    words.className = 'rcx-doubt-text';
+    words.title = 'Show it in the text';
+    const sup = document.createElement('sup');
+    sup.textContent = f.text;
+    words.append(`…${f.before.replace(/\s+/g, ' ').slice(-34)}`, sup,
+                 `${f.after.replace(/\s+/g, ' ').slice(0, 24)}…`);
+    words.addEventListener('click', () => f.sup.scrollIntoView({ block: 'center', behavior: 'smooth' }));
+    const why = document.createElement('div');
+    why.className = 'rcx-doubt-why';
+    why.textContent = DOUBT_REASONS[f.reason] || '';
+    body.append(words, why);
+
+    const chosen = sorter.decisions.get(f.sup);
+    const pick = (label, value) => {
+      const button = footButton(label, () => {
+        sorter.decisions.set(f.sup, value);
+        sorter.plan = sortingPlan();
+        renderSorter();
+        placeSorter();
+      }, chosen === value);
+      button.classList.add('rcx-pick');
+      return button;
+    };
+    row.append(body, pick('Citation', 'cite'), pick('Not a citation', 'skip'));
+    return row;
+  }
+
+  /* One line per reference: its new number, the one it had, and as much of
+   * it as fits; the whole reference on hover. */
+  function sortRow(ref, uncited) {
+    const el = document.createElement('div');
+    el.className = 'rcx-sort-row';
+    el.title = ref.from.text;
+
+    const badge = document.createElement('span');
+    badge.className = 'rcx-n';
+    badge.textContent = ref.n;
+    const was = ref.from.n ?? ref.from.pos;
+    if (was !== ref.n) badge.classList.add('rcx-n-picked');
+
+    const before = document.createElement('span');
+    before.className = 'rcx-was';
+    before.textContent = was !== ref.n ? `was ${was}` : '';
+
+    const line = document.createElement('span');
+    line.className = 'rcx-line';
+    if (uncited) {
+      const tag = document.createElement('span');
+      tag.className = 'rcx-uncited';
+      tag.textContent = 'not cited · ';
+      line.appendChild(tag);
+    }
+    line.append(ref.from.text);
+
+    el.append(badge, before, line);
+    return el;
+  }
+
+  function skippedNote(skipped) {
+    const shown = skipped.slice(0, 5).map((s) => `…${fold(s.before).slice(-30)}[${s.text}]`);
+    if (skipped.length > shown.length) shown.push(`and ${skipped.length - shown.length} more`);
+    const many = skipped.length === 1 ? 'superscript that does' : 'superscripts that do';
+    return note(`Left as they are: ${skipped.length} ${many} not read as citations`, shown.join('  '));
+  }
+
+  function footButton(label, what, primary) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `btn btn-sm ${primary ? 'btn-primary' : 'btn-default'}`;
+    button.textContent = label;
+    button.addEventListener('click', what);
+    return button;
+  }
+
+  /* Renumbering, from the page read once more: the preview may have stood open
+   * while the form changed. If it would now do something other than what was
+   * shown, it is shown again instead.
+   *
+   * The citations go first and the reference boxes only after every citation
+   * has been written: a citation left with its old number beside a renumbered
+   * list would point at the wrong paper. If any citation cannot be written,
+   * the ones already written are put back, the boxes are not touched, and the
+   * preview stays open to say so. Afterwards the markers and the boxes are read
+   * back, and anything that did not take its new number is said. */
+  function applySorting() {
+    const shown = sorter.plan;
+    const plan = sortingPlan();
+    if (plan.problems.length || plan.pending.length || signature(plan) !== signature(shown)) {
+      sorter.plan = plan;
+      return renderSorter();
+    }
+
+    const undo = { editors: [], rewritten: [], refs: [] };
+    if (!writeCitations(plan.cites, undo)) {
+      restoreText(undo);
+      sorter.plan = sortingPlan();
+      renderSorter();
+      sorter.el.querySelector('.rcx-list').prepend(note('Nothing was changed',
+        'A citation could not be rewritten, so the text was put back and the references were ' +
+        'left as they were. The text may have changed while the preview was open: check it, ' +
+        'then press Renumber again.', 'rcx-trouble'));
+      return;
+    }
+    for (const ref of plan.changes) undo.refs.push({ input: ref.input, value: ref.input.value });
+    for (const ref of plan.changes) setValue(ref.input, ref.value);
+    undo.after = undoState(undo);
+    sorter.undo = undo;
+    const undoButton = document.getElementById(`${SORT_ID}-undo`);
+    if (undoButton) undoButton.hidden = false;
+    closeSorter();
+
+    const off = misread(plan);
+    say(off
+      ? `Renumbered, but ${off} citations or references did not take the new number. ` +
+        '"Undo renumbering" puts everything back.'
+      : `Renumbered ${plan.changes.length} references and ${plan.cites.length} citations. ` +
+        'Nothing is saved until you save the page.',
+      off ? 'trouble' : 'good');
+  }
+
+  /* The citations, in one transaction per Tiptap editor, so that one ctrl-Z in
+   * the text undoes all of them. A field with no Tiptap behind it has each
+   * marker rewritten on its own, as the picker rewrites one. False as soon as
+   * one cannot be written; what was written by then is in `undo`. */
+  function writeCitations(cites, undo) {
+    const byEditor = new Map();
+    for (const cite of cites) {
+      const ed = tiptapFor(cite.target);
+      if (ed) {
+        if (!byEditor.has(ed)) byEditor.set(ed, []);
+        byEditor.get(ed).push(cite);
+        continue;
+      }
+      const was = cite.sup.textContent;
+      const node = rewrite(cite.target, cite.sup, cite.write);
+      if (!node) return false;
+      undo.rewritten.push({ target: cite.target, node, text: was });
+    }
+    for (const [ed, group] of byEditor) {
+      const json = ed.getJSON();
+      if (!tiptapRewriteAll(ed, group)) return false;
+      undo.editors.push({ ed, json });
+    }
+    return true;
+  }
+
+  /* From the end of the document backwards, so that each replacement leaves
+   * the positions before it where they were. The new number keeps the marks
+   * the old one had, superscript among them; a marker whose text in the
+   * document is not what was read off the page stops the whole transaction. */
+  function tiptapRewriteAll(ed, cites) {
+    try {
+      const { state } = ed.view;
+      const spots = cites.map((cite) => ({
+        cite,
+        from: ed.view.posAtDOM(cite.sup, 0),
+        to: ed.view.posAtDOM(cite.sup, cite.sup.childNodes.length),
+      })).sort((a, b) => b.from - a.from);
+      const tr = state.tr;
+      for (const { cite, from, to } of spots) {
+        // The marks of the citation's first character go on the whole new
+        // number. A citation whose characters carry different marks (half of
+        // it bold) comes out with the first character's: rare, and still a
+        // superscript.
+        const marks = state.doc.nodeAt(from)?.marks || [];
+        if (fold(state.doc.textBetween(from, to)) !== cite.text ||
+            !marks.some((m) => m.type.name === 'superscript')) return false;
+        tr.replaceWith(from, to, state.schema.text(cite.write, marks));
+      }
+      ed.view.dispatch(tr);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /* How many numbered superscripts and boxes are not what the plan wrote.
+   * Every numbered superscript is compared, citation or not, so that one
+   * changed by mistake is counted as well as one that was not changed. */
+  function misread(plan) {
+    const now = numberedSuperscripts(new Set()).map((f) => f.text);
+    const want = plan.expected;
+    let off = Math.abs(now.length - want.length);
+    want.forEach((text, i) => { if (i < now.length && now[i] !== text) off++; });
+    return off + plan.changes.filter((r) => r.input.value !== r.value).length;
+  }
+
+  const undoState = (undo) => JSON.stringify([
+    undo.editors.map(({ ed }) => ed.getJSON()),
+    undo.rewritten.map(({ target }) => target.root.innerHTML),
+    undo.refs.map(({ input }) => input.value),
+  ]);
+
+  /* Back to before renumbering. Anything typed in the text or the references
+   * since then would be lost with it, so that is asked first. `setContent`
+   * takes `emitUpdate` as its second argument in Tiptap 2 and inside an
+   * options object in Tiptap 3; the object answers both. */
+  function undoSorting() {
+    const undo = sorter.undo;
+    if (!undo) return;
+    if (undoState(undo) !== undo.after &&
+        !confirm('The text or the references have changed since they were renumbered. ' +
+                 'Undoing puts them back as they were before renumbering, and those changes are lost.')) {
+      return;
+    }
+    restoreText(undo);
+    for (const { input, value } of undo.refs) setValue(input, value);
+    sorter.undo = null;
+    const button = document.getElementById(`${SORT_ID}-undo`);
+    if (button) button.hidden = true;
+    say('Put back as it was before renumbering.');
+  }
+
+  /* The text as it was before the citations were written: each Tiptap editor
+   * from its saved document, each other field marker by marker, the last
+   * written first. */
+  function restoreText(undo) {
+    for (const { ed, json } of undo.editors) ed.commands.setContent(json, { emitUpdate: true });
+    for (const { target, node, text } of [...undo.rewritten].reverse()) rewrite(target, node, text);
+  }
+
   // ————————————————————————————————————————————————————— the looks
 
   /* The panel is Radiopaedia's own furniture, borrowed: a hairline border that
@@ -2698,6 +3351,85 @@
     }
     .rcx-say-trouble { background:#b45309; }
 
+    /* radioUpdater: Renumber references, and its preview, small in the
+       bottom right corner so that the text stays in view. */
+    .rcx-panel.rcx-sorter {
+      left:auto; top:auto; right:16px; bottom:16px;
+      width:min(400px, calc(100vw - 32px)); max-height:min(55vh, 480px);
+      font-size:12px; line-height:16px;
+    }
+    .rcx-sorter .rcx-head { padding:5px 6px 5px 10px; }
+    .rcx-sorter .rcx-note { padding:8px 10px; }
+    .rcx-sort-steps {
+      display:flex; align-items:center; gap:6px; padding:6px 10px;
+      border-bottom:1px solid rgba(0,0,0,.06);
+    }
+    .rcx-step-label { margin-right:auto; color:#444; font-weight:600; }
+    .rcx-step-at { min-width:44px; text-align:center; color:#555; font-variant-numeric:tabular-nums; }
+    .rcx-step { padding:0 8px !important; line-height:18px !important; }
+    .rcx-sort-group > summary {
+      padding:6px 10px; cursor:pointer; color:#5b2d90; font-weight:600;
+      border-bottom:1px solid rgba(0,0,0,.06); list-style:none;
+    }
+    .rcx-sort-group > summary::-webkit-details-marker { display:none; }
+    .rcx-sort-group > summary::before { content:'▸'; display:inline-block; width:14px; }
+    .rcx-sort-group[open] > summary::before { content:'▾'; }
+    .rcx-sort-group > summary:hover { text-decoration:underline; }
+    .rcx-sort-row {
+      display:flex; align-items:center; gap:6px; padding:2px 10px;
+      border-bottom:1px solid rgba(0,0,0,.04);
+    }
+    .rcx-sort-row .rcx-n { min-width:20px; padding:0 4px; font-size:11px; line-height:16px; }
+    .rcx-was { flex:0 0 44px; color:#999; font-size:11px; }
+    .rcx-line {
+      flex:1 1 auto; min-width:0; color:#444;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .rcx-cite-diff.rcx-cite-on ins { box-shadow:0 0 0 2px #15803d; }
+    .rcx-sort-btn { margin-left:6px; }
+    .rcx-sort-btn[hidden] { display:none !important; }
+    .rcx-uncited { color:#b45309; }
+    .rcx-sort-foot {
+      display:flex; align-items:center; gap:6px; padding:7px 10px;
+      border-top:1px solid rgba(0,0,0,.08); background:#fafafa;
+    }
+    .rcx-sort-says { margin-right:auto; color:#999; font-size:11px; }
+    ::highlight(rcx-renumber-old) {
+      background-color:#fde2e2; color:#b91c1c; text-decoration:line-through;
+    }
+    ::highlight(rcx-renumber-doubt) { background-color:#fde68a; color:#92400e; }
+    .rcx-cite-diff {
+      position:fixed; z-index:99996; pointer-events:none;
+      display:inline-flex; gap:1px;
+      font-family:"Open Sans", system-ui, -apple-system, sans-serif;
+      font-size:10px; line-height:13px; font-weight:700; white-space:nowrap;
+    }
+    .rcx-cite-diff[hidden] { display:none; }
+    .rcx-cite-diff del, .rcx-cite-diff ins, .rcx-cite-diff mark {
+      padding:0 3px; border-radius:2px; box-shadow:0 0 0 1px currentColor inset;
+    }
+    .rcx-cite-diff del { background:#fde2e2; color:#b91c1c; text-decoration:line-through; }
+    .rcx-cite-diff ins { background:#dcfce7; color:#15803d; text-decoration:none; }
+    .rcx-cite-diff mark { background:#fde68a; color:#92400e; }
+    .rcx-doubts {
+      padding:6px 10px 4px; background:#fffbeb; border-bottom:1px solid rgba(0,0,0,.08);
+    }
+    .rcx-doubt {
+      display:flex; align-items:center; gap:6px; padding:4px 0;
+      border-top:1px solid rgba(146,64,14,.12);
+    }
+    .rcx-doubts .rcx-note-head + .rcx-doubt { margin-top:6px; }
+    .rcx-doubt-body { flex:1 1 auto; min-width:0; }
+    .rcx-doubt-text {
+      color:#444; font-size:12px; cursor:pointer;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .rcx-doubt-text sup {
+      padding:0 2px; border-radius:2px; background:#fde68a; color:#92400e; font-weight:700;
+    }
+    .rcx-doubt-why { color:#92400e; font-size:11px; }
+    .rcx-pick { flex:0 0 auto; }
+
     /* The box that has just been filled in, so the eye finds it when the page
        scrolls down to it. */
     .rcx-fresh {
@@ -2723,6 +3455,7 @@
   function wire() {
     if (refsAtLoad === null && inEditor()) refsAtLoad = referenceBoxes().length || null;
     mount();
+    mountSort();
     listenKeys(document);
     for (const t of editors) listenKeys(t.doc);
   }
