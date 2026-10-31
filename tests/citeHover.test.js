@@ -6,7 +6,7 @@ describe('Citation hover', () => {
     document.body.innerHTML =
       '<div class="body user-generated-content"><p>Tears <sup>2</sup> and flaps <sup>1,2</sup>. ' +
       'Uptake of <sup>18</sup>F.</p></div>' +
-      '<div id="references"><ul><li>1. Smith J. Tears. <a href="#">doi</a></li><li>2. Jones K. Flaps.</li></ul></div>'
+      '<div id="references"><ul><li>1. Smith J. Tears. <a href="https://doi.org/10.1/x">doi</a> <a href="/articles/aorta">aorta</a></li><li>2. Jones K. Flaps.</li></ul></div>'
     require('../radioUpdater/assets/js/renumber.js')
     require('../radioUpdater/assets/js/citeHover.js')
   })
@@ -21,8 +21,10 @@ describe('Citation hover', () => {
 
   it('shows each reference of a multiple citation, links included', () => {
     hover(1)
-    expect([...tip().children].map((row) => row.textContent)).toEqual(['1. Smith J. Tears. doi', '2. Jones K. Flaps.'])
-    expect(tip().querySelector('a')).not.toBeNull()
+    expect([...tip().children].map((row) => row.textContent)).toEqual(['1. Smith J. Tears. doi aorta', '2. Jones K. Flaps.'])
+    let [external, internal] = tip().querySelectorAll('a')
+    expect(external.target).toBe('_blank')
+    expect(internal.target).toBe('')
   })
 
   it('ignores a superscript citing no reference the article has', () => {

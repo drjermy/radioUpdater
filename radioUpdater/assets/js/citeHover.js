@@ -29,6 +29,9 @@
         for (const li of items) {
             const row = document.createElement('div')
             row.append(...li.cloneNode(true).childNodes)
+            for (const a of row.querySelectorAll('a[href]')) {
+                if (a.host !== location.host) Object.assign(a, { target: '_blank', rel: 'noopener' })
+            }
             tip.appendChild(row)
         }
         document.body.appendChild(tip)
