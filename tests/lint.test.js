@@ -237,6 +237,47 @@ describe('Lint in the editor', () => {
       expect(button('Apply')).toBeUndefined()
     })
 
+    const headingSpace = (html) => finding({
+      matched: '<h5>CT </h5>', position: 1, condition: 'Radiopaedia.HeadingsSpacing', severity: 'error',
+      message: 'Never put spaces at either end of headings.', match: html, trimmed: 'CT', suggestions: ['<h5>CT</h5>'],
+    })
+
+    it('takes a stray space off the end of a heading', async () => {
+      document.querySelector('#editor').innerHTML = '<p>Enough text to be read as the article body here.</p><h5>CT </h5>'
+      const seen = commands()
+      await lint(headingSpace('<h5>CT </h5>'))
+      await pointAtIt()
+      button('Apply').click()
+
+      expect(seen.map(({ command, selected }) => [command, selected])).toEqual([['delete', ' ']])
+    })
+
+    it('changes nothing when the editor has already lost the space', async () => {
+      document.querySelector('#editor').innerHTML = '<p>Enough text to be read as the article body here.</p><h5>CT</h5>'
+      await lint(headingSpace('<h5>CT </h5>'))
+      await pointAtIt()
+
+      expect(note().querySelector('.rlx-fix').textContent).toContain('already removed')
+      expect(button('Apply')).toBeUndefined()
+    })
+
+    it('puts the space before a citation outside it', async () => {
+      document.querySelector('#editor').innerHTML = '<p>This needs more evidence<sup>7</sup> than it has so far in this article.</p>'
+      const seen = commands()
+      await lint(finding({
+        matched: 'e<sup>7</sup>', position: 24, condition: 'Radiopaedia.CitationPrecedingSpace', severity: 'error',
+        message: 'Citations need a space before them', suggestions: ['e <sup>7</sup>'],
+        match: '<p>This needs more evidence<sup>7</sup> than it has so far in this article.</p>',
+        trimmed: 'This needs more evidence7 than it has so far in this article.',
+      }))
+      await pointAtIt()
+      button('Apply').click()
+
+      expect(seen).toHaveLength(1)
+      expect(seen[0]).toMatchObject({ command: 'insertText', value: ' ', node: 'This needs more evidence' })
+      expect(seen[0].offset).toBe('This needs more evidence'.length)
+    })
+
     it('stays a message when the fix moves a tag', async () => {
       await lint(finding({ matched: '<strong>usually:</strong>', suggestions: ['<strong>usually</strong>:'] }))
       await pointAtIt()

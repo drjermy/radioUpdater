@@ -260,17 +260,25 @@
     return out;
   }
 
-  /* What the linter would write instead. Only text can be typed into the editor: a fix
-   * that moves a tag comes back in HTML and stays a message, and with two readings to
-   * choose from ("there is" or "there has") the note shows both and leaves it to you. */
-  const HTML_TAG = /<\/?[a-z][^>]*>/i;
+  /* What the linter would write instead. Only text can be typed into the editor, so a fix
+   * in HTML counts if its tags stay as they are, as with "<h5>CT </h5>", and is worked out
+   * on the text alone. One that moves a tag stays a message. With two readings to choose
+   * from ("there is" or "there has") the note shows both and leaves it to you. */
+  const HTML_TAG = /<\/?[a-z][^>]*>/gi;
   const LONGEST_FIX = 2000;
 
+  const tagsIn = (html) => (html.match(HTML_TAG) || []).join('');
+  const textIn = (html) => new DOMParser().parseFromString(html, 'text/html').body.textContent;
+
   function replacement(lint) {
-    const options = lint.suggestions;
-    const from = String(lint.matched ?? '');
+    let options = lint.suggestions;
+    let from = String(lint.matched ?? '');
     if (!Array.isArray(options) || !options.length || !from) return null;
-    if (HTML_TAG.test(from) || options.some((o) => HTML_TAG.test(o))) return null;
+    if ([from, ...options].some((s) => tagsIn(s))) {
+      if (options.length > 1 || tagsIn(from) !== tagsIn(options[0])) return null;
+      [from, options] = [textIn(from), [textIn(options[0])]];
+      if (from === options[0]) return null;
+    }
 
     const fixed = options.map(tidy).filter(Boolean).join(' or ');
     if (options.length > 1) return { fixed };
@@ -610,7 +618,11 @@
    * spaces, so each is placed from the letters around it, and a place in front of a space
    * goes back over that space: the comma of "<a>embolism</a> (e.g." belongs after the
    * link, not at the end of the text inside it. Null if the words are not the ones the
-   * linter quoted, which is the last chance not to change the wrong thing. */
+   * linter quoted, which is the last chance not to change the wrong thing.
+   *
+   * The linter reads the published text and the editor may have tidied it since: a space
+   * it was to take out may already be gone. Deleting nothing would delete the letter
+   * before the caret instead, so those are dropped, and none left means nothing to do. */
   function placeEdits(point, index, spot) {
     const words = point.from;
     const lettersBefore = [0];
@@ -619,6 +631,15 @@
     if (letters !== spot.to - spot.from + 1) return null;
 
     const afterLast = () => ({ node: index.nodes[spot.to], offset: index.offsets[spot.to] + 1 });
+    const pastSpaces = (place) => {
+      const text = place.node.nodeValue;
+      while (place.offset < text.length && /\s/.test(text[place.offset])) place.offset++;
+      return place;
+    };
+    const afterLetter = (n) => {
+      const place = beforeLetter(n);
+      return { node: place.node, offset: place.offset + 1 };
+    };
     const beforeLetter = (n) => ({ node: index.nodes[spot.from + n], offset: index.offsets[spot.from + n] });
 
     const startOf = (i) => {
@@ -633,17 +654,19 @@
     };
     const endOf = (i) => {
       const n = lettersBefore[i];
-      if (i > 0 && flat(words[i - 1])) {
-        const place = beforeLetter(n - 1);
-        return { node: place.node, offset: place.offset + 1 };
-      }
-      return n >= letters ? afterLast() : beforeLetter(n);
+      if (i > 0 && flat(words[i - 1])) return afterLetter(n - 1);
+      return n >= letters ? pastSpaces(afterLast()) : beforeLetter(n);
     };
+    // Straight after a letter stays with that letter: a space before "<sup>7" goes outside it.
+    const insertAt = (i) => (i > 0 && flat(words[i - 1]) ? afterLetter(lettersBefore[i] - 1) : startOf(i));
+    const same = (a, b) => a.node === b.node && a.offset === b.offset;
 
-    return point.hunks.map(({ at, del, ins }) => {
-      const start = startOf(at);
-      return { start, end: del ? endOf(at + del) : start, insert: ins };
-    });
+    return point.hunks
+      .map(({ at, del, ins }) => {
+        const start = del ? startOf(at) : insertAt(at);
+        return { start, end: del ? endOf(at + del) : start, insert: ins };
+      })
+      .filter(({ start, end, insert }) => insert || !same(start, end));
   }
 
   function firstLook(f, indices) {
@@ -1083,7 +1106,7 @@
       const fix = document.createElement('div');
       fix.className = 'rlx-fix';
       fix.style.color = c.ink;
-      fix.textContent = f.point.fixed;
+      fix.textContent = f.edits?.length === 0 ? 'The editor has already removed this. Saving the article removes it from the published text.' : f.point.fixed;
       stage.note.appendChild(fix);
     }
 

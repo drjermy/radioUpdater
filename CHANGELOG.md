@@ -4,6 +4,7 @@
 
 ### Added
 - Lint shows the linter's suggested fix for far more findings, not only a missing Oxford comma, and **Apply** makes the change. Links inside the words are kept, so a bracketed e.g. can become an inline one
+- Lint says so when the editor has already removed a space it found in the published text, so saving the article is all that is left to do
 
 ## 3.11
 
