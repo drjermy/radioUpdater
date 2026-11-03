@@ -4,12 +4,14 @@ A Chrome extension for Radiopaedia editors that checks and formats references us
 
 ## What it does
 
-When editing an article or case on Radiopaedia, RadioUpdater adds a **CiteItRight** button next to each reference. Hover over the button to check a reference, or click it to refresh. It also [lints articles](#linting-articles).
+When editing an article or case on Radiopaedia, RadioUpdater adds a **Check reference** button next to each reference. Click it to check that reference, and click it again to check again. **Check all references** checks every one not yet checked. It also [lints articles](#linting-articles).
 
 - **Match** — the reference is already correctly formatted
 - **Review** — hover the status button to see the suggested changes, then click to accept
 - **Undo** — revert to the original reference if needed
 - **Error** — the reference could not be parsed
+
+If [Retraction Watch](https://doi.org/10.13003/c23rw1d9) has recorded a retraction or an expression of concern for the paper, a warning appears under the reference, with a link to the notice. The citation picker shows the same warning before you add a paper.
 
 ## Installation
 
@@ -32,8 +34,8 @@ To update to a new version:
 ## Usage
 
 1. Navigate to any article or case **edit page** on Radiopaedia
-2. Each reference textarea will have a **CiteItRight (hover)** button beneath it
-3. Hover over the button to automatically check the reference
+2. Each reference textarea will have a **Check reference** button beneath it
+3. Click the button to check the reference
 4. If changes are suggested, the status button will show **Review** — hover it to preview the diff, click to apply
 5. Click **Undo** on the status button if you want to revert
 
@@ -66,7 +68,7 @@ One case is not caught: an isotope written with a space before and after it, fol
 
 ### Notes
 
-- The reference boxes stay in place and their text is swapped, so a box's **CiteItRight** status may refer to its previous text. Hover the button again to check it.
+- The reference boxes stay in place and their text is swapped, so a box's **Check reference** status and retraction warning may refer to its previous text. Click the button again to check it.
 
 ## Linting articles
 

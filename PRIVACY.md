@@ -12,7 +12,7 @@ RadioUpdater does **not** collect, store, or transmit any personal data. It does
 
 ## Data transmitted to external services
 
-When you use the Cite feature on a Radiopaedia article or case edit page, the extension sends the **text content of individual reference fields** to the Cite API (`radiopaedia.work/cite`) for citation formatting and verification. This happens only when you interact with the Cite button (by hovering or clicking).
+When you use the Cite feature on a Radiopaedia article or case edit page, the extension sends the **text content of individual reference fields** to the Cite API (`radiopaedia.work/cite`) for citation formatting and verification. This happens only when you click **Check reference** or **Check all references**.
 
 When you press **Lint** on an article, the extension sends the **article's slug**, which is in the page's URL, to the linter API (`radiopaedia.work/api/v1/lint`), along with your browser's own cookies for `radiopaedia.work`.
 
@@ -33,7 +33,7 @@ The linter keeps its answers and the findings you ignore in the tab's `sessionSt
 
 ## Permissions
 
-- **Host permission for `radiopaedia.org`** — required to add Cite buttons to article and case edit pages
+- **Host permission for `radiopaedia.org`** — required to add **Check reference** buttons to article and case edit pages
 - **Host permission for `radiopaedia.work`** — required to send references for formatting and articles for linting
 
 ## Changes to this policy

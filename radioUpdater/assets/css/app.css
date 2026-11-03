@@ -53,6 +53,30 @@
     text-decoration: underline;
 }
 
+.radioupdater-retraction {
+    clear: left;
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #dc2626;
+    border-left-width: 4px;
+    border-radius: 2px;
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.radioupdater-retraction-concern {
+    border-color: #d97706;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.radioupdater-retraction a {
+    color: inherit;
+    text-decoration: underline;
+}
+
 .radioupdater-check-all {
     margin: 1rem 0;
 }

@@ -76,7 +76,7 @@
  * created.
  *
  * The reference itself is never rewritten. If what is already down there
- * differs from what the databases say, that is a job for CiteItRight and not
+ * differs from what the databases say, that is a job for Check reference and not
  * for a tool whose business is the number.
  *
  * What it costs
@@ -113,7 +113,7 @@
    * (citePickerBridge.js, then background.js), at radiopaedia.work's citation
    * API, as the reference checker is. */
   const CITE_TIMEOUT = 60_000;      // somebody else's database is at the far end of it
-  const CITE_KEY = 'rcx-cite:';     // one answer, for this tab's session
+  const CITE_KEY = 'rcx-cite-2:';   // one answer, for this tab's session (radioUpdater: 2 has retractionHtml)
 
   const BOX_TIMEOUT = 6_000;        // how long a new reference box gets to appear
   const CONTEXT_CHARS = 46;         // how much of the sentence the panel shows back
@@ -209,6 +209,15 @@
   const FORMAT_LINK = 'format citation';
   const ADD_LINK = 'add another reference';
 
+  /* radioUpdater: Remove only hides a reference and ticks its _destroy box, until the form is
+   * saved. Its row is the widest ancestor with this one textarea in it. */
+  function removedBox(input) {
+    for (let el = input.parentElement; el?.querySelectorAll('textarea').length === 1; el = el.parentElement) {
+      if (el.querySelector('input[name$="[_destroy]"]:checked')) return true;
+    }
+    return false;
+  }
+
   function referenceBoxes() {
     const anchors = new Set();
     for (const link of document.querySelectorAll('a, button')) {
@@ -219,6 +228,7 @@
 
     const rows = [];
     for (const input of document.querySelectorAll('textarea')) {
+      if (removedBox(input)) continue;
       const raw = fold(input.value);
       const numbered = REF_NUM.exec(raw);
       // Inside the form's reference block it is a reference whatever it looks like, as cite.js has it.
@@ -358,6 +368,7 @@
       year: meta.year == null ? null : String(meta.year),
       pmid: meta.pmid == null ? null : String(meta.pmid),
       doi: typeof meta.doi === 'string' ? meta.doi.toLowerCase() : null,
+      retractionHtml: typeof data.retractionHtml === 'string' ? data.retractionHtml : null,   // radioUpdater
     };
   }
 
@@ -1688,6 +1699,8 @@
     body.className = 'rcx-found-body';
     body.textContent = `${panel.next}. ${plain(said.citation)}`;
     el.append(head, meta, body);
+    // radioUpdater: before you add it, as this is the moment to choose another paper.
+    if (said.retractionHtml) el.insertAdjacentHTML('beforeend', said.retractionHtml);
     return el;
   }
 
@@ -2152,10 +2165,9 @@
     panel.query = search;
     render();
 
-    const cached = citeCached(search);
-    if (cached) return void landed(cached);
     try {
-      const said = await askCite(search);
+      // radioUpdater: the cached answer inside the try too, or a failure showing it says nothing.
+      const said = citeCached(search) ?? await askCite(search);
       rememberCite(search, said);
       landed(said);
     } catch (err) {

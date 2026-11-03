@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest'
 
 const { checkInBatches, CHECK_ALL_BATCH } = require('../radioUpdater/assets/js/cite.js')
 
+require('../radioUpdater/assets/js/retraction.js')
+
 describe('checkInBatches', () => {
   it('sends references a batch at a time, in order', async () => {
     let ids = Array.from({ length: CHECK_ALL_BATCH * 2 + 1 }, (_, i) => 'ref_' + i)
@@ -80,6 +82,51 @@ describe('Check all references button', () => {
     expect(document.getElementById('ref_1_pre').textContent).toBe('Cited first')
     expect(document.getElementById('ref_3_status').innerText).toBe('Error')
     expect(button.innerText).toBe('Check all references')
+  })
+})
+
+describe('Check reference button', () => {
+  const setup = (answer) => {
+    Object.assign(globalThis, require('../radioUpdater/assets/js/helperScripts.js'))
+    let sent = []
+    globalThis.chrome = {
+      runtime: {
+        id: 'test',
+        sendMessage: (message, respond) => {
+          sent.push(message)
+          respond({ data: answer() })
+        },
+      },
+    }
+    document.body.innerHTML = '<form><fieldset class="references"><div><textarea id="ref_1">first</textarea></div></fieldset></form>'
+    require('../radioUpdater/assets/js/cite.js').updateArticleEdit()
+    return { sent, button: document.getElementById('ref_1_button') }
+  }
+
+  it('does nothing on hover, checks on a click, and checks afresh on the next', () => {
+    let { sent, button } = setup(() => ({ citation: 'Cited', match: true }))
+
+    expect(button.textContent).toBe('Check reference')
+    button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    expect(sent).toEqual([])
+
+    button.click()
+    button.click()
+
+    expect(sent).toEqual([{ msg: 'first', cache: '' }, { msg: 'first', cache: 'refresh' }])
+    expect(button.textContent).toBe('Check reference')
+  })
+
+  it('warns of a retraction under the reference, and clears it on the next check', () => {
+    let retraction = { event: 'retraction', date: '2020-01-02', notice_url: 'https://doi.org/10.1000/notice' }
+    let answers = [{ citation: 'Cited', match: true, retraction }, { citation: 'Cited', match: true, retraction: null }]
+    let { button } = setup(() => answers.shift())
+
+    button.click()
+    expect(document.getElementById('ref_1_retraction').textContent).toContain('This paper has been retracted')
+
+    button.click()
+    expect(document.getElementById('ref_1_retraction')).toBeNull()
   })
 })
 

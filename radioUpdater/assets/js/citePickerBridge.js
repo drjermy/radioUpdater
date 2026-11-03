@@ -21,6 +21,11 @@ function answerCitePicker(event) {
             data = { error: 'The citation tool is busy. Try again in a minute.' }
         }
 
+        // Built here, as citePicker.js has no way to reach retraction.js from the page's world.
+        if (data?.retraction) {
+            data = { ...data, retractionHtml: window.radioUpdaterRetractionNotice(data.retraction)?.outerHTML }
+        }
+
         answer(data)
     })
 }

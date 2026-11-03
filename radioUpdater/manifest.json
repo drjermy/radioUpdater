@@ -1,6 +1,6 @@
 {
     "name": "RadioUpdater",
-    "version": "3.10.0",
+    "version": "3.11.0",
     "description": "Productivity tools for Radiopaedia editors.",
     "manifest_version": 3,
     "content_scripts": [
@@ -11,6 +11,7 @@
             "all_frames": false,
             "js": [
                 "assets/js/helperScripts.js",
+                "assets/js/retraction.js",
                 "assets/js/cite.js",
                 "assets/js/citePickerBridge.js",
                 "assets/js/contentScript.js",

@@ -1,4 +1,3 @@
-let requestInFlight = false
 let checkAllRunning = false
 
 // radiopaedia.work cites up to ten references per batch request; five keeps each one quick.
@@ -85,17 +84,13 @@ function preloadReference(textareaId, cache) {
     let responseTimeout = setTimeout(function () {
         if (! responded) {
             responded = true
-            requestInFlight = false
             showResult(textareaId, null)
         }
     }, 35000)
 
-    requestInFlight = true
-
     chrome.runtime.sendMessage({msg: el.value, cache: cache}, function (response) {
         if (responded) return
         responded = true
-        requestInFlight = false
         clearTimeout(responseTimeout)
 
         showResult(textareaId, chrome.runtime.lastError ? null : response?.data)
@@ -123,6 +118,8 @@ function startReference(textareaId) {
     if (diffDiv) {
         diffDiv.remove()
     }
+
+    document.getElementById(el.id + '_retraction')?.remove()
 
     if (! el.value) {
         button.disabled = false
@@ -155,7 +152,6 @@ function showResult(textareaId, data) {
 
     button.disabled = false
     button.dataset.state = 'loaded'
-    button.innerText = "CiteItRight (click)"
 
     // A reference no source has isn't wrong, just unindexed: flag it for a manual check.
     if (data?.reason === 'not-found') {
@@ -172,6 +168,12 @@ function showResult(textareaId, data) {
         setStatus(status, 'Match', '#74bcf7', true)
     } else {
         setStatus(status, 'Review', '#74bcf7')
+    }
+
+    let notice = window.radioUpdaterRetractionNotice(data.retraction)
+    if (notice) {
+        notice.id = el.id + '_retraction'
+        parent.appendChild(notice)
     }
 
     let numberedCitation = document.createTextNode(data.index ? data.index + '. ' + data.citation : data.citation)
@@ -368,7 +370,7 @@ function citeButton(textarea)
     button.id = textarea.id + '_button'
     button.style.marginTop = "1rem"
     button.dataset.state = 'ready'
-    button.appendChild(document.createTextNode("CiteItRight (hover)"))
+    button.appendChild(document.createTextNode("Check reference"))
 
     addCiteButtonListeners(button)
 
@@ -377,35 +379,11 @@ function citeButton(textarea)
 
 function addCiteButtonListeners(el)
 {
-    el.addEventListener("mouseover", function () {
-        if (this.dataset.state === 'ready') {
-            let button = this
-            button._hoverTimeout = setTimeout(function () {
-                triggerLoad(button)
-            }, 300)
-        }
-    })
-    el.addEventListener("mouseout", function () {
-        if (this._hoverTimeout) {
-            clearTimeout(this._hoverTimeout)
-            this._hoverTimeout = null
-        }
-    })
     el.addEventListener("click", function (event) {
         event.preventDefault()
-        if (this._hoverTimeout) {
-            clearTimeout(this._hoverTimeout)
-            this._hoverTimeout = null
-        }
-        triggerLoad(this, 'refresh')
+        // Pressed again, it means check again rather than show the stored answer.
+        preloadReference(this.dataset.textarea, this.dataset.state === 'ready' ? '' : 'refresh')
     })
-}
-
-function triggerLoad(el, cache = '')
-{
-    if ((requestInFlight || checkAllRunning) && cache !== 'refresh') return
-
-    preloadReference(el.dataset.textarea, cache)
 }
 
 function copyCitation(el)

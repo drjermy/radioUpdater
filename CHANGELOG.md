@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.11
+
+### Added
+- A reference that has been retracted, or has an expression of concern, shows a warning with a link to the notice, under the reference and in the citation picker before you add it
+
+### Changed
+- **CiteItRight** is now **Check reference**, a button you click to check a reference and to check it again. Hovering over it no longer checks anything
+
+### Fixed
+- A reference you have removed no longer appears in the citation picker or counts in renumbering
+
 ## 3.10
 
 ### Added
