@@ -97,6 +97,73 @@ describe('Looking up a paper in the picker', () => {
     expect(window.postMessage.mock.calls.filter(([data]) => data.type === 'rcx-cite-ask')).toHaveLength(1)
   })
 
+  it('on a case, leaves the page alone and says what to do with the citation', async () => {
+    const refs = document.createElement('div')
+    refs.id = 'case-references'
+    refs.innerHTML = '<a href="#">Add another reference</a>'
+    const add = vi.fn()
+    refs.querySelector('a').addEventListener('click', add)
+    document.body.appendChild(refs)
+    const before = document.querySelector('.ProseMirror').innerHTML
+    const boxes = document.querySelectorAll('textarea').length
+
+    document.querySelector('.rcx-btn-cite').click() // closes the panel the last test left open
+    await look()
+    document.querySelector('.rcx-panel input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await vi.waitFor(() => expect(document.querySelector('.rcx-panel').textContent).toContain('on the clipboard'))
+
+    expect(add).not.toHaveBeenCalled()
+    expect(document.querySelector('.ProseMirror').innerHTML).toBe(before)
+    expect(document.querySelectorAll('textarea')).toHaveLength(boxes)
+
+    document.querySelector('.rcx-btn-cite').click()
+    refs.remove()
+  })
+
+  it('in Tiptap, finds a one-digit marker and does not type on in superscript', async () => {
+    const root = document.querySelector('.ProseMirror')
+    const before = root.innerHTML
+    const p = root.querySelector('p')
+    const unset = vi.fn()
+    const chain = {
+      focus: () => chain,
+      insertContentAt: (pos, content) => {
+        const sup = document.createElement('sup')
+        sup.textContent = content.at(-1).text
+        p.appendChild(sup)
+        return chain
+      },
+      unsetMark: (mark) => { unset(mark); return chain },
+      run: () => true,
+    }
+    root.editor = {
+      commands: { insertContentAt: () => true },
+      schema: { marks: { superscript: {} } },
+      chain: () => chain,
+      view: {
+        posAtDOM: () => 1,
+        // As ProseMirror does: the end of a mark is outside it, unless asked to lean left.
+        domAtPos: (pos, side) => ({ node: side < 0 ? p.querySelector('sup') : p, offset: 0 }),
+      },
+    }
+    const caret = document.createRange()
+    caret.setStart(p.firstChild, p.firstChild.length)
+    caret.collapse(true)
+    getSelection().removeAllRanges()
+    getSelection().addRange(caret)
+    document.dispatchEvent(new Event('selectionchange'))
+
+    document.querySelector('.rcx-btn-cite').click()
+    document.querySelector('.rcx-row-ref, .rcx-row').click()
+
+    await vi.waitFor(() => expect(p.querySelector('sup')?.textContent).toBe('1'))
+    expect(unset).toHaveBeenCalledWith('superscript')
+    expect(document.querySelector('.rcx-say')?.textContent ?? '').not.toContain('would not raise')
+
+    delete root.editor
+    root.innerHTML = before
+  })
+
   it('stops counting a reference once it has been removed', () => {
     expect(window.radiopaediaCite.look().references).toBe(2)
 

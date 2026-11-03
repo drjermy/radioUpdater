@@ -8,6 +8,8 @@
 
 ### Fixed
 - A Lint finding about a heading now marks the heading, not a bullet earlier in the article with the same words
+- Adding a looked-up paper from the citation picker on a case now says what to do: save the text, then paste the citation, which is on the clipboard, into **Add reference**
+- A one-digit citation no longer warns that the editor would not raise it, and what you type after a citation is no longer in superscript
 
 ## 3.11
 

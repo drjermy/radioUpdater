@@ -470,6 +470,12 @@
    * and is silently not enough for anything watching the field — this costs
    * three lines and covers both. */
   async function addReference(text) {
+    // radioUpdater: a case saves each reference from its own form and allows one form open at a
+    // time, so adding one here would ask to save or discard the text being edited.
+    if (document.getElementById('case-references')) {
+      throw new Error('The citation is on the clipboard. Save this text, click "Add reference", ' +
+                      'paste it there and save it, then cite it from here.');
+    }
     const add = addButton();
     if (!add) {
       throw new Error('Cannot find Radiopaedia’s "Add another reference" button. ' +
@@ -951,7 +957,8 @@
   }
 
   function tiptapSup(target, ed, text, at) {
-    const up = raisedFrom(target, ed.view.domAtPos(at).node);
+    // Leaning left, because `at` is the end of a one-digit marker, which is otherwise outside it.
+    const up = raisedFrom(target, ed.view.domAtPos(at, -1).node);
     return up && fold(up.textContent) === text ? up : null;
   }
 
@@ -962,7 +969,8 @@
       const pos = ed.view.posAtDOM(at.startContainer, at.startOffset);
       const content = [{ type: 'text', text, marks: [{ type: 'superscript' }] }];
       if (spaced) content.unshift({ type: 'text', text: ' ' });
-      if (!ed.chain().focus().insertContentAt(pos, content).run()) return null;
+      // Unset, or whatever is typed next joins the superscript.
+      if (!ed.chain().focus().insertContentAt(pos, content).unsetMark('superscript').run()) return null;
       const node = tiptapSup(target, ed, text, pos + (spaced ? 2 : 1));
       return { node, wrote: true, raised: !!node, how: 'tiptap' };
     } catch {
@@ -977,7 +985,7 @@
       const from = ed.view.posAtDOM(sup, 0);
       const to = ed.view.posAtDOM(sup, sup.childNodes.length);
       const content = { type: 'text', text, marks: [{ type: 'superscript' }] };
-      if (!ed.chain().focus().insertContentAt({ from, to }, content).run()) return null;
+      if (!ed.chain().focus().insertContentAt({ from, to }, content).unsetMark('superscript').run()) return null;
       return tiptapSup(target, ed, text, from + 1);
     } catch {
       return null;
@@ -1608,7 +1616,7 @@
     }
 
     if (panel.mode === 'trouble') {
-      list.appendChild(note('Nothing came back', panel.trouble, 'rcx-trouble'));
+      list.appendChild(note(panel.trouble.includes('clipboard') ? 'Not added' : 'Nothing came back', panel.trouble, 'rcx-trouble'));
       foot.textContent = '⏎  try again    esc  close';
       return;
     }

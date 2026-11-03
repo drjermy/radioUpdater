@@ -39,6 +39,10 @@ To update to a new version:
 4. If changes are suggested, the status button will show **Review** — hover it to preview the diff, click to apply
 5. Click **Undo** on the status button if you want to revert
 
+## Citations and characters on cases
+
+The citation picker and the character picker are in the toolbar of **Case Discussion** and the study captions, as they are in the article editor. A case saves each section and each reference on its own, with one open at a time, so a paper looked up in the picker cannot be added while you are editing. Its citation goes on the clipboard instead: save the text, click **Add reference**, paste it and save it, then cite it from the picker.
+
 ## Renumbering references
 
 **Renumber references**, next to **Check all references**, numbers the references in the order the text first cites them, as Zotero and EndNote do, and rewrites every citation to match. The first reference cited becomes 1, the next one not cited before becomes 2, and so on. References the text never cites move to the end, in their current order. Citations are rewritten sorted, with runs of three or more as a range (`2-4`).
