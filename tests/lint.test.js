@@ -338,6 +338,49 @@ describe('Lint in the editor', () => {
     })
   })
 
+  describe('with the same words in a bullet and a heading', () => {
+    const line = (html, words) => finding({
+      matched: html, position: 1, match: html, trimmed: words, message: `"${words}" is not recognised`,
+      condition: 'Radiopaedia.HeadingsValid',
+    })
+    const marked = () => {
+      const seen = new Set()
+      Range.prototype.getClientRects = function () {
+        seen.add(this.startContainer.parentElement.id)
+        return [{ left: 10, top: 10, width: 100, height: 20, right: 110, bottom: 30 }]
+      }
+      return seen
+    }
+
+    it('marks the heading, whatever the case of the bullet above it', async () => {
+      document.querySelector('#editor').innerHTML = '<p>Enough text to be read as the article body here.</p><ul><li id="bullet">pars distalis</li></ul><h6 id="heading">Pars distalis</h6>'
+      const seen = marked()
+      await lint(line('<h6>Pars distalis</h6>', 'Pars distalis'))
+
+      expect([...seen]).toEqual(['heading'])
+    })
+
+    it('marks the bullet when that is the line the linter quoted', async () => {
+      document.querySelector('#editor').innerHTML = '<p>Enough text to be read as the article body here.</p><h6 id="heading">Pars distalis</h6><p id="bullet">Pars distalis</p>'
+      const seen = marked()
+      await lint(line('<p>Pars distalis</p>', 'Pars distalis'))
+
+      expect([...seen]).toEqual(['bullet'])
+    })
+
+    it('counts the copies of a heading apart from the bullet', async () => {
+      document.querySelector('#editor').innerHTML = '<p>Enough text to be read as the article body here.</p><p id="bullet">Anterior pituitary</p><h5 id="first">Anterior pituitary</h5><h5 id="second">Anterior pituitary</h5>'
+      const seen = marked()
+      await lint(
+        { ...line('<p>Anterior pituitary</p>', 'Anterior pituitary'), line: 1 },
+        { ...line('<h5>Anterior pituitary</h5>', 'Anterior pituitary'), line: 2 },
+        { ...line('<h5>Anterior pituitary</h5>', 'Anterior pituitary'), line: 3 },
+      )
+
+      expect([...seen].sort()).toEqual(['bullet', 'first', 'second'])
+    })
+  })
+
   it('closes the findings when pressed again', async () => {
     await lint(finding())
     press()

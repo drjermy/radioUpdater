@@ -323,11 +323,14 @@
 
       // `inOrder` is sorted by line, so a line that is not the one this snippet
       // was last seen on is the next copy of it.
-      let copy = copies.get(snippet);
-      if (!copy) copies.set(snippet, copy = { line: lint.line, n: 1 });
+      // A heading and a bullet in the same words are not copies of each other.
+      const heading = /^\s*<h[1-6]\b/i.test(lint.match ?? '');
+      const copyKey = `${heading}|${snippet}`;
+      let copy = copies.get(copyKey);
+      if (!copy) copies.set(copyKey, copy = { line: lint.line, n: 1 });
       else if (copy.line !== lint.line) { copy.line = lint.line; copy.n++; }
 
-      out.push({ check, severity, line: where, message, snippet,
+      out.push({ check, severity, line: where, message, snippet, heading,
                  target: flat(plain(lint.matched)), targetNth: nthInLine(lint),
                  point: insertion(lint) || replacement(lint),
                  occurrence: copy.n, key: `${check}|${message}|${snippet}` });
@@ -498,11 +501,16 @@
    * block-filling match, or fewer of them than the occurrence asked for, the
    * plain document order is used exactly as before. That is what keeps a
    * one-word snippet the linter really did mean in prose from being dragged
-   * onto a heading that happens to repeat the word. */
-  function pick(index, needle, occurrence) {
+   * onto a heading that happens to repeat the word.
+   *
+   * Filling a block is not enough on its own: the bullet "pars distalis" fills
+   * its block too, and comes before the heading "Pars distalis" it introduces.
+   * The line the linter quotes says which of the two it meant. */
+  function pick(index, needle, occurrence, heading) {
     const hits = locateAll(index, needle);
     if (!hits.length) return null;
-    const exact = hits.filter((h) => fillsBlock(index, h));
+    const exact = hits.filter((h) => fillsBlock(index, h)
+      && index.owners[h.from].matches('h1,h2,h3,h4,h5,h6') === heading);
     const list = exact.length >= occurrence ? exact : hits;
     return list[occurrence - 1] || null;
   }
@@ -673,7 +681,7 @@
     const needle = flat(f.snippet);
     if (!needle) return null;
     for (let i = 0; i < indices.length; i++) {
-      const wide = pick(indices[i], needle, f.occurrence || 1);
+      const wide = pick(indices[i], needle, f.occurrence || 1, f.heading);
       if (!wide) continue;
       const rel = within(indices[i], wide, f.target, f.targetNth);
       f.narrowed = rel >= 0;
