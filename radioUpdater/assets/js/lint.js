@@ -601,39 +601,11 @@
   // ———————————————————————————————————————————————————————————— the stage
 
   addStyle(`
-    .rlx-group {
-      display:inline-flex; align-items:center; gap:.4em; vertical-align:middle;
-      margin-left:.6em; white-space:nowrap; flex:0 0 auto; align-self:center;
-    }
-    /* Shaped like Radiopaedia's own "Edit article". */
-    .rlx-btn {
-      display:inline-flex; align-items:center; gap:.4em; vertical-align:middle;
-      padding:6px 12px; border-radius:2px;
-      border:1px solid rgba(0,0,0,.1); border-bottom-color:rgba(0,0,0,.25);
-      background:#ededed; color:#555;
-      box-shadow:inset 0 1px 0 rgba(255,255,255,.2), 0 1px 2px rgba(0,0,0,.05);
-      font-family:inherit; font-size:12px; font-weight:600; line-height:18px;
-      letter-spacing:normal; text-transform:none; cursor:pointer;
-      /* The title is a flex container, and it deforms the button twice over.
-         A long title squeezes it until "Lint" wraps to "Lin/t", because
-         flex-shrink defaults to 1 and the button gets treated as spare room;
-         and align-self defaults to stretch, so on a title running to two lines
-         the button is pulled into a tall oval. Pinned here: never wrap, never
-         give up width, keep your own height. */
-      white-space:nowrap; flex:0 0 auto; align-self:center;
-    }
-    .rlx-btn:hover { background:#2563eb; color:#fff; }
-    .rlx-btn[disabled] { opacity:.55; cursor:progress; }
-
-    .rlx-tool.rlx-busy { opacity:.5 !important; cursor:progress; }
+    .rlx-busy { opacity:.5 !important; cursor:progress; }
     .rlx-tool { position:relative !important; }
     .rcx-btn .rlx-tool-n { position:absolute; top:-5px; right:-5px; min-width:15px; padding:0 3px;
       border-radius:8px; color:#fff !important; font:700 10px/15px system-ui,-apple-system,sans-serif;
       text-align:center; white-space:nowrap; pointer-events:none; }
-
-    .rlx-btn-float { position:fixed; top:14px; right:14px; z-index:99999; margin:0;
-      padding:4px 6px; border-radius:2px;
-      background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.18); }
 
     #rlx-layer { position:fixed; inset:0; pointer-events:none; z-index:99997; }
     .rlx-mark { position:fixed; border-radius:2px; }
@@ -1201,7 +1173,7 @@
   }
   const inEditor = () => /\/edit\/?$/.test(location.pathname);
 
-  let group = null, button = null;
+  let button = null;
 
   const SEVEREST = ['error', 'warning', 'suggestion'];
 
@@ -1272,65 +1244,34 @@
     // `isConnected` rather than a query: the observer also fires for the marks
     // we redraw ourselves on every scroll frame, and searching the document
     // each time would be wasted work.
-    if (group?.isConnected) return;
+    if (button?.isConnected) return;
     const slug = currentSlug();
-    if (!slug) return;
+    // radioUpdater: in the article's edit menu, where reviewLink.js adds Review article. It
+    // stands where that does, so it comes beneath it when there is one.
+    const menu = document.querySelector('#edit-dropdown .jq-dropdown-menu');
+    if (!slug || !menu || !/^\/articles\/[^/]+\/?$/.test(location.pathname)) return;
 
-    const g = document.createElement('span');
-    g.className = 'rlx-group';
-
-    const b = document.createElement('button');
-    b.className = 'rlx-btn';
-    b.type = 'button';
-    b.textContent = 'Lint';
-    b.title = 'Run the linter on this article and show the findings on the text';
-    b.addEventListener('click', () => {
-      if (inEditor()) return runLint(slug, {});
-      return preflight(slug);
+    const link = document.createElement('a');
+    link.href = '#';
+    link.textContent = 'Lint article';
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (!link.classList.contains('rlx-busy')) preflight(slug);
     });
+    const item = document.createElement('li');
+    item.appendChild(link);
 
-    g.append(b);
+    const report = menu.querySelector('a[href*="docs.google.com/forms"]')?.closest('li');
+    if (report) report.before(item);
+    else menu.appendChild(item);
 
-    const title = visibleTitle();
-    if (title) title.appendChild(g);
-    else pinToCorner(g);
-
-    // Attached does not mean visible. If the chosen title sits in a hidden
-    // branch — and a page seen by a signed-in user has more than one `h1`,
-    // menus and modals included — the button exists, `querySelector` finds it,
-    // and there is nothing on screen. Better to notice here than later.
-    const box = b.getBoundingClientRect();
-    if (!box.width || !box.height) pinToCorner(g);
-
-    group = g; button = b;
-  }
-
-  /* The fallback spot: fixed at the top right, outside any branch of the site.
-   * Ugly but always visible, which is what counts here. */
-  function pinToCorner(b) {
-    b.classList.add('rlx-btn-float');
-    document.body.appendChild(b);
-  }
-
-  /* The first title that actually takes up room on screen. */
-  function visibleTitle() {
-    const candidates = document.querySelectorAll(
-      'h1.header-title, .page-header h1, #article-title, h1');
-    for (const el of candidates) {
-      const r = el.getBoundingClientRect();
-      if (r.width > 0 && r.height > 0) return el;
-    }
-    return null;
+    button = link;
   }
 
   // ——————————————————————————————————————————————————————————— startup
 
-  function setButtonState(label, busy) {
-    if (!button) return;
-    // radioUpdater: the toolbar's is an icon on a link, with no text to change and no `disabled`.
-    if (button.classList.contains('rlx-tool')) return void button.classList.toggle('rlx-busy', !!busy);
-    button.textContent = label;
-    button.disabled = !!busy;
+  function setButtonState(busy) {
+    button?.classList.toggle('rlx-busy', busy);
   }
 
   /* Only the last article is kept. This is here so that reloading the edit
@@ -1372,8 +1313,11 @@
    * this is not an extra request — it is the same one, made earlier. */
   async function preflight(slug) {
     if (!slug) return;
-    hideBanner();
-    setButtonState('Lint…', true);
+    // radioUpdater: the menu closes on the click, so this is all there is to see meanwhile.
+    showBanner('Linting this article…');
+    document.querySelector('#rlx-banner .rlx-tick').remove();
+    clearTimeout(bannerTimer);
+    setButtonState(true);
     try {
       const findings = fromApi(await lintResult(slug));
       if (!findings.length) {
@@ -1385,9 +1329,10 @@
       sessionStorage.setItem(PENDING_KEY, slug);
       location.href = `${location.origin}/articles/${encodeURIComponent(slug)}/edit`;   // radioUpdater: this subdomain
     } catch (err) {
+      hideBanner();
       alert(`Lint failed.\n\n${err.message}`);
     } finally {
-      setButtonState('Lint', false);
+      setButtonState(false);
     }
   }
 
@@ -1395,7 +1340,7 @@
     if (!slug) return;
     stage.slug = slug;
     hideBanner();
-    setButtonState('Lint…', true);
+    setButtonState(true);
     try {
       const ignored = ignoredHere(slug);
       const findings = fromApi(await lintResult(slug, { force }))
@@ -1430,7 +1375,7 @@
     } catch (err) {
       alert(`Lint failed.\n\n${err.message}`);
     } finally {
-      setButtonState('Lint', false);
+      setButtonState(false);
     }
   }
 
@@ -1447,10 +1392,7 @@
    * the button gets put — it is that the script is not running at all. */
   console.info('[Radiopaedia Lint] active ·', location.pathname,
                '· slug:', currentSlug(),
-               '· button:', group
-                 ? (group.classList.contains('rlx-btn-float')
-                     ? 'floating, top right' : 'next to the title')
-                 : (currentSlug() ? (inEditor() ? 'in the editor toolbar' : 'NOT MOUNTED') : 'not needed here'),
+               '· button:', button ? 'mounted' : 'not here',
                button ? button.getBoundingClientRect() : '');
 
   if (inEditor()) {

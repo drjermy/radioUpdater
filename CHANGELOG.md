@@ -7,6 +7,7 @@
 
 ### Changed
 - **CiteItRight** is now **Check reference**, a button you click to check a reference and to check it again. Hovering over it no longer checks anything
+- **Lint** on an article page is now **Lint article** in the menu beside **Edit article**, beneath **Review article**
 
 ### Fixed
 - A reference you have removed no longer appears in the citation picker or counts in renumbering

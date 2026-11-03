@@ -72,7 +72,7 @@ One case is not caught: an isotope written with a space before and after it, fol
 
 ## Linting articles
 
-**Lint**, beside an article's title and in the article editor's toolbar, runs the [radiopaedia.work linter](https://radiopaedia.work/lint/linter) on it. This comes from Giorgio's [Radiopaedia Lint](https://github.com/gmadevs/radiopaedia-lint-userscript) userscript, without its automatic mode, missing-sections margin, citation chips, forced re-read or retraction check. Uninstall the userscript, or each article gets two buttons.
+**Lint article**, in the menu beside **Edit article**, and **Lint** in the article editor's toolbar, run the [radiopaedia.work linter](https://radiopaedia.work/lint/linter) on it. This comes from Giorgio's [Radiopaedia Lint](https://github.com/gmadevs/radiopaedia-lint-userscript) userscript, without its automatic mode, missing-sections margin, citation chips, forced re-read or retraction check. Uninstall the userscript, or each article gets two buttons.
 
 - With findings, it opens the editor and marks them on the text; the marks are drawn over the text and are not part of it. The number on the toolbar button is how many are left.
 - Point at a mark to read what it says. **Ignore** hides it in this tab until the tab is closed, without changing the article or the linter. **Apply**, on a missing Oxford comma, puts the comma in, and ctrl-Z takes it out. That is the one finding the extension can work out a change for; the linter gives the rest as a message, so you make those changes yourself.

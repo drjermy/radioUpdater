@@ -80,7 +80,6 @@ describe('Lint in the editor', () => {
 
   it('asks the linter nothing until pressed', () => {
     expect(tool().previousElementSibling.matches('.rcx-btn-chars')).toBe(true)
-    expect(document.querySelector('.rlx-group')).toBeNull()
     expect(asked()).toHaveLength(0)
   })
 
@@ -201,5 +200,43 @@ describe('Lint in the editor', () => {
     await settled('#rlx-banner')
 
     expect(document.querySelector('#rlx-banner').textContent).toContain('Nothing to lint')
+  })
+})
+
+describe('Lint on the article page', () => {
+  const lintLink = () => [...document.querySelectorAll('#edit-dropdown a')].find((a) => a.textContent === 'Lint article')
+  let observe
+
+  beforeAll(() => {
+    window.history.pushState({}, '', '/articles/epilepsy')
+    document.body.innerHTML = '<div id="edit-dropdown"><ul class="jq-dropdown-menu">' +
+      '<li><a class="radioupdater-review-link">Review article</a></li>' +
+      '<li><a href="https://docs.google.com/forms/d/x">Report problem with article</a></li>' +
+      '</ul></div>'
+    chrome.runtime.sendMessage.mockReset()
+    chrome.runtime.sendMessage.mockImplementation((message, reply) => reply({ status: 200, text: '{"slug":"epilepsy","lints":[]}' }))
+    vi.spyOn(console, 'info').mockImplementation(() => {})
+    // Disconnected below, or the observer fires as jsdom tears the page down.
+    observe = vi.spyOn(MutationObserver.prototype, 'observe')
+    delete require.cache[require.resolve('../radioUpdater/assets/js/lint.js')]
+    require('../radioUpdater/assets/js/lint.js')
+  })
+
+  afterAll(() => observe.mock.contexts.forEach((observer) => observer.disconnect()))
+
+  it('stands beneath Review article in the menu, and asks nothing until pressed', () => {
+    let items = [...document.querySelectorAll('#edit-dropdown li')].map((li) => li.textContent)
+
+    expect(items).toEqual(['Review article', 'Lint article', 'Report problem with article'])
+    expect(chrome.runtime.sendMessage).not.toHaveBeenCalled()
+  })
+
+  it('stays on the page with a word when there is nothing to fix', async () => {
+    sessionStorage.clear()
+    lintLink().click()
+
+    expect(chrome.runtime.sendMessage.mock.calls[0][0]).toEqual({ type: 'lint', slug: 'epilepsy' })
+    await vi.waitFor(() => expect(document.querySelector('#rlx-banner').textContent).toContain('Nothing to lint'))
+    expect(lintLink().classList.contains('rlx-busy')).toBe(false)
   })
 })
