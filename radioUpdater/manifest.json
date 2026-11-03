@@ -6,7 +6,8 @@
     "content_scripts": [
         {
             "matches": [
-                "https://*.radiopaedia.org/*"
+                "https://*.radiopaedia.org/*",
+                "http://localhost:3000/*"
             ],
             "all_frames": false,
             "js": [
@@ -24,7 +25,8 @@
         },
         {
             "matches": [
-                "https://*.radiopaedia.org/*"
+                "https://*.radiopaedia.org/*",
+                "http://localhost:3000/*"
             ],
             "all_frames": false,
             "world": "MAIN",
