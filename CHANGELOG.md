@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.12
+
+### Added
+- Lint shows the linter's suggested fix for far more findings, not only a missing Oxford comma, and **Apply** makes the change. Links inside the words are kept, so a bracketed e.g. can become an inline one
+
 ## 3.11
 
 ### Added

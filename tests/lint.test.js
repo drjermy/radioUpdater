@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest'
 
 globalThis.chrome = { runtime: { id: 'test', sendMessage: vi.fn(), onMessage: { addListener: vi.fn() } } }
 
@@ -146,6 +146,117 @@ describe('Lint in the editor', () => {
     let { focusNode, focusOffset } = document.getSelection()
     expect(focusNode.textContent.slice(0, focusOffset)).toBe('Forms are infantile, juvenile')
     expect(tool().textContent).toBe('')
+  })
+
+  describe('with a fix from the linter', () => {
+    const CAROTID = '<p><a href="/a">cardiac embolism</a> (e.g. <a href="/b">atrial fibrillation</a>, endocarditis)</p>'
+    const CAROTID_PLAIN = 'cardiac embolism (e.g. atrial fibrillation, endocarditis)'
+    const inlineEg = finding({
+      matched: ' (e.g. atrial fibrillation, endocarditis)', position: 40, severity: 'suggestion',
+      condition: 'Radiopaedia.InlineEG', message: 'Consider an inline e.g.', match: CAROTID, trimmed: CAROTID_PLAIN,
+      suggestions: [', e.g. atrial fibrillation, endocarditis'],
+    })
+    const pointAtIt = async () => {
+      point(20, 15)
+      await vi.waitFor(() => expect(note().hidden).toBe(false))
+    }
+    // What each command was given: the words selected, or where the caret was.
+    const commands = () => {
+      const seen = []
+      document.execCommand.mockImplementation((command, ui, value) => {
+        const selection = document.getSelection()
+        seen.push({
+          command, value, selected: selection.toString(), node: selection.focusNode.textContent,
+          offset: selection.focusOffset, inLink: !!selection.focusNode.parentElement.closest('a'),
+        })
+        return true
+      })
+      return seen
+    }
+
+    afterEach(() => document.execCommand.mockImplementation(() => true))
+
+    it('shows the fix and changes only the words that differ', async () => {
+      const seen = commands()
+      await lint(finding({ suggestions: ['often'] }))
+      await pointAtIt()
+      expect(note().querySelector('.rlx-fix').textContent).toBe('often')
+
+      button('Apply').click()
+
+      expect(seen.map(({ command, value, selected }) => [command, value, selected]))
+        .toEqual([['insertText', 'often', 'usually']])
+      expect(tool().textContent).toBe('')
+    })
+
+    it('turns a bracketed e.g. inline without touching the links inside it', async () => {
+      document.querySelector('#editor').innerHTML = CAROTID
+      const seen = commands()
+      await lint(inlineEg)
+      await pointAtIt()
+      expect(note().querySelector('.rlx-fix').textContent).toBe(', e.g. atrial fibrillation, endocarditis')
+
+      button('Apply').click()
+
+      expect(seen.map(({ command, value, selected }) => [command, value, selected])).toEqual([
+        ['delete', undefined, ')'],
+        ['delete', undefined, '('],
+        ['insertText', ',', ''],
+      ])
+      // The comma goes after the link, in front of the space, not at the end of the link.
+      expect(seen[2]).toMatchObject({ node: ' (e.g. ', offset: 0, inLink: false })
+    })
+
+    it('takes out spaces, which the index does not hold', async () => {
+      document.querySelector('#editor').innerHTML = '<p>A size of 5 - 7 is seen in most of these patients.</p>'
+      const seen = commands()
+      await lint(finding({
+        matched: '5 - 7', position: 14, condition: 'Radiopaedia.NumberSpacing', message: 'No spaces in a range',
+        match: '<p>A size of 5 - 7 is seen in most of these patients.</p>',
+        trimmed: 'A size of 5 - 7 is seen in most of these patients.', suggestions: ['5-7'],
+      }))
+      await pointAtIt()
+      button('Apply').click()
+
+      expect(seen.map(({ command, selected }) => [command, selected])).toEqual([['delete', ' '], ['delete', ' ']])
+    })
+
+    it('says what will go when the fix is to delete the words', async () => {
+      await lint(finding({ suggestions: [''] }))
+      await pointAtIt()
+
+      expect(note().querySelector('.rlx-fix').textContent).toBe('Remove "usually"')
+      expect(button('Apply')).toBeDefined()
+    })
+
+    it('shows both readings of an ambiguous fix and applies neither', async () => {
+      await lint(finding({ suggestions: ['there is', 'there has'] }))
+      await pointAtIt()
+
+      expect(note().querySelector('.rlx-fix').textContent).toBe('there is or there has')
+      expect(button('Apply')).toBeUndefined()
+    })
+
+    it('stays a message when the fix moves a tag', async () => {
+      await lint(finding({ matched: '<strong>usually:</strong>', suggestions: ['<strong>usually</strong>:'] }))
+      await pointAtIt()
+
+      expect(note().querySelector('.rlx-fix')).toBeNull()
+      expect(button('Apply')).toBeUndefined()
+    })
+
+    it('reads a comparison sign as text, not a tag', async () => {
+      document.querySelector('#editor').innerHTML = '<p>Seen when the size is < 5 in most of these patients.</p>'
+      await lint(finding({
+        matched: '< 5', position: 25, condition: 'Radiopaedia.NumberComparisons', message: 'No space after the sign',
+        match: '<p>Seen when the size is &lt; 5 in most of these patients.</p>',
+        trimmed: 'Seen when the size is < 5 in most of these patients.', suggestions: ['<5'],
+      }))
+      await pointAtIt()
+
+      expect(note().querySelector('.rlx-fix').textContent).toBe('<5')
+      expect(button('Apply')).toBeDefined()
+    })
   })
 
   describe('after an edit', () => {

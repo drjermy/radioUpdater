@@ -225,6 +225,59 @@
     };
   }
 
+  /* radioUpdater: the fix the linter suggests, as the smallest changes that make it, so
+   * that links and bold inside the words survive: "(e.g. <a>x</a>)" loses a bracket at
+   * each end rather than being typed over. Where `at`, `del` and `ins` are offsets into,
+   * and text for, the words as the linter quotes them. */
+  function hunks(a, b) {
+    let start = 0;
+    while (start < a.length && start < b.length && a[start] === b[start]) start++;
+    let end = 0;
+    while (end < a.length - start && end < b.length - start &&
+           a[a.length - 1 - end] === b[b.length - 1 - end]) end++;
+    const x = a.slice(start, a.length - end), y = b.slice(start, b.length - end);
+
+    // Longest common subsequence: what stays. The table is the size of the difference.
+    const stays = Array.from({ length: x.length + 1 }, () => new Array(y.length + 1).fill(0));
+    for (let i = x.length - 1; i >= 0; i--) {
+      for (let j = y.length - 1; j >= 0; j--) {
+        stays[i][j] = x[i] === y[j] ? stays[i + 1][j + 1] + 1 : Math.max(stays[i + 1][j], stays[i][j + 1]);
+      }
+    }
+
+    const out = [];
+    const change = (at, del, ins) => {
+      const last = out[out.length - 1];
+      if (last && last.at + last.del === at) { last.del += del; last.ins += ins; }
+      else out.push({ at, del, ins });
+    };
+    let i = 0, j = 0;
+    while (i < x.length || j < y.length) {
+      if (i < x.length && j < y.length && x[i] === y[j]) { i++; j++; }
+      else if (j >= y.length || (i < x.length && stays[i + 1][j] >= stays[i][j + 1])) change(start + i++, 1, '');
+      else change(start + i, 0, y[j++]);
+    }
+    return out;
+  }
+
+  /* What the linter would write instead. Only text can be typed into the editor: a fix
+   * that moves a tag comes back in HTML and stays a message, and with two readings to
+   * choose from ("there is" or "there has") the note shows both and leaves it to you. */
+  const HTML_TAG = /<\/?[a-z][^>]*>/i;
+  const LONGEST_FIX = 2000;
+
+  function replacement(lint) {
+    const options = lint.suggestions;
+    const from = String(lint.matched ?? '');
+    if (!Array.isArray(options) || !options.length || !from) return null;
+    if (HTML_TAG.test(from) || options.some((o) => HTML_TAG.test(o))) return null;
+
+    const fixed = options.map(tidy).filter(Boolean).join(' or ');
+    if (options.length > 1) return { fixed };
+    const edits = from.length + options[0].length > LONGEST_FIX ? null : hunks(from, options[0]);
+    return { fixed: fixed || `Remove "${tidy(from)}"`, from, hunks: edits };
+  }
+
   /* One entry of `lints[]`, one finding — in the order they occur in the
    * article rather than grouped by check, so that walking them with `j` walks
    * the article from top to bottom.
@@ -268,7 +321,7 @@
 
       out.push({ check, severity, line: where, message, snippet,
                  target: flat(plain(lint.matched)), targetNth: nthInLine(lint),
-                 point: insertion(lint),
+                 point: insertion(lint) || replacement(lint),
                  occurrence: copy.n, key: `${check}|${message}|${snippet}` });
     }
     return out;
@@ -553,6 +606,46 @@
     return best;
   }
 
+  /* radioUpdater: the changes of a suggested fix, placed in the editor. The index holds no
+   * spaces, so each is placed from the letters around it, and a place in front of a space
+   * goes back over that space: the comma of "<a>embolism</a> (e.g." belongs after the
+   * link, not at the end of the text inside it. Null if the words are not the ones the
+   * linter quoted, which is the last chance not to change the wrong thing. */
+  function placeEdits(point, index, spot) {
+    const words = point.from;
+    const lettersBefore = [0];
+    for (let i = 0; i < words.length; i++) lettersBefore.push(lettersBefore[i] + (flat(words[i]) ? 1 : 0));
+    const letters = lettersBefore[words.length];
+    if (letters !== spot.to - spot.from + 1) return null;
+
+    const afterLast = () => ({ node: index.nodes[spot.to], offset: index.offsets[spot.to] + 1 });
+    const beforeLetter = (n) => ({ node: index.nodes[spot.from + n], offset: index.offsets[spot.from + n] });
+
+    const startOf = (i) => {
+      const n = lettersBefore[i];
+      if (n >= letters) return afterLast();
+      const place = beforeLetter(n);
+      if (i < words.length && !flat(words[i])) {
+        const text = place.node.nodeValue;
+        while (place.offset > 0 && /\s/.test(text[place.offset - 1])) place.offset--;
+      }
+      return place;
+    };
+    const endOf = (i) => {
+      const n = lettersBefore[i];
+      if (i > 0 && flat(words[i - 1])) {
+        const place = beforeLetter(n - 1);
+        return { node: place.node, offset: place.offset + 1 };
+      }
+      return n >= letters ? afterLast() : beforeLetter(n);
+    };
+
+    return point.hunks.map(({ at, del, ins }) => {
+      const start = startOf(at);
+      return { start, end: del ? endOf(at + del) : start, insert: ins };
+    });
+  }
+
   function firstLook(f, indices) {
     const needle = flat(f.snippet);
     if (!needle) return null;
@@ -569,7 +662,7 @@
   function anchor(findings, roots) {
     const indices = roots.map((r) => buildIndex(r.root));
     for (const f of findings) {
-      f.range = null; f.frame = null; f.caret = null;
+      f.range = null; f.frame = null; f.caret = null; f.edits = null;
       if (f.state === 'ignored') continue;
 
       const found = f.track
@@ -587,7 +680,8 @@
        * before it and drawn against that character's trailing edge. Only
        * when the highlight really is the quoted phrase: on a finding that
        * stayed wide, an offset into the phrase points at nothing. */
-      if (f.narrowed && f.point) {
+      if (f.narrowed && f.point?.hunks) f.edits = placeEdits(f.point, index, spot);
+      if (f.narrowed && f.point?.insert) {
         const at = spot.from + f.point.flatAt;
         if (at > spot.from && at <= spot.to + 1) {
           f.caret = rangeFrom(index, { from: at - 1, to: at - 1 });
@@ -995,7 +1089,7 @@
 
     const acts = document.createElement('div');
     acts.className = 'rlx-acts';
-    if (f.point && f.caret) {
+    if (canApply(f)) {
       acts.appendChild(noteButton('Apply', 'Make this change in the text (Alt+Enter)', () => applyFix(f), true));
     }
     acts.appendChild(noteButton('Ignore', 'Hide this finding in this tab (Alt+X). The article and the linter are not changed.', () => ignore(f)));
@@ -1104,21 +1198,34 @@
   /* radioUpdater: the change goes in as typing at the caret, the way the picker's markers
    * do, so that the editor keeps it and one ctrl-Z takes it out again. */
   function applyFix(f) {
-    const doc = f.caret.endContainer.ownerDocument;
-    const spot = doc.createRange();
-    spot.setStart(f.caret.endContainer, f.caret.endOffset);
-    spot.collapse(true);
+    const atCaret = () => {
+      const place = { node: f.caret.endContainer, offset: f.caret.endOffset };
+      return [{ start: place, end: place, insert: f.point.insert }];
+    };
+    const edits = f.edits || atCaret();
+    const doc = edits[0].start.node.ownerDocument;
     f.root.focus({ preventScroll: true });
     const selection = doc.getSelection();
-    selection.removeAllRanges();
-    selection.addRange(spot);
-    if (!doc.execCommand('insertText', false, f.point.insert)) return;
+
+    // Last first, so that each one leaves the places of those before it where they were.
+    for (const { start, end, insert } of [...edits].reverse()) {
+      const spot = doc.createRange();
+      spot.setStart(start.node, start.offset);
+      spot.setEnd(end.node, end.offset);
+      selection.removeAllRanges();
+      selection.addRange(spot);
+      if (!doc.execCommand(insert ? 'insertText' : 'delete', false, insert || undefined)) return;
+    }
 
     f.state = 'done';
     f.range = null;
     setCurrent(-1);
     paintTool();
     reanchorSoon();
+  }
+
+  function canApply(f) {
+    return !!(f?.edits?.length || (f?.point?.insert && f.caret));
   }
 
   function isTyping(t) {
@@ -1137,7 +1244,7 @@
       next: () => step(1),
       prev: () => step(-1),
       ignore: () => f && ignore(f),
-      apply: () => f?.point && f.caret && applyFix(f),
+      apply: () => canApply(f) && applyFix(f),
       close: () => (f ? setCurrent(-1) : destroyStage()),
     };
     const m = e.altKey
