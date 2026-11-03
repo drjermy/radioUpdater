@@ -76,7 +76,7 @@ One case is not caught: an isotope written with a space before and after it, fol
 - Point at a mark to read what it says. **Ignore** hides it in this tab until the tab is closed, without changing the article or the linter. **Apply**, on a missing Oxford comma, puts the comma in, and ctrl-Z takes it out. That is the one finding the extension can work out a change for; the linter gives the rest as a message, so you make those changes yourself.
 - A mark goes when its own words change, and comes back if ctrl-Z restores them. A mark over a whole sentence or paragraph goes when any of it changes.
 - From the keyboard, Alt+J and Alt+K go through the marks, Alt+X ignores, and Alt+Enter applies.
-- Words on the shared proper noun and acronym lists are not reported. They are read from the userscript's repository, and a note can propose a new one there.
+- Names and acronyms that need no comment are ignored by the linter itself, for everyone, and are managed on [radiopaedia.work](https://radiopaedia.work/lint/ignores).
 
 The linter reads the published article, not your unsaved text, and may answer from its last read of it. Pressing the toolbar button off and on asks again, and to force a fresh read use the ⟳ on the linter's own page.
 

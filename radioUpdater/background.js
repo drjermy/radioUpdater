@@ -26,21 +26,10 @@ function requestCitations(message) {
 
 const LINT_API = 'https://radiopaedia.work/api/v1/lint?article='
 const LINT_TIMEOUT = 60000 // the linter may have to read the article from Radiopaedia first
-const LINT_FILES_URL = 'https://raw.githubusercontent.com/gmadevs/radiopaedia-lint-userscript/main/'
-const LINT_FILES = ['proper-nouns.txt', 'acronyms.txt']
 
-// lint.js's two kinds of request: the findings for an article, or one of the linter's shared files.
-function requestLint({ file, slug }) {
-    if (file !== undefined && ! LINT_FILES.includes(file)) {
-        return Promise.resolve({ failed: 'network' })
-    }
-
-    let request = file !== undefined
-        // Cookies for radiopaedia.work only, so that having cleared a Cloudflare check there counts.
-        ? fetchWithTimeout(LINT_FILES_URL + file, {}, LINT_TIMEOUT)
-        : fetchWithTimeout(LINT_API + encodeURIComponent(slug), { headers: { 'Accept': 'application/json' }, credentials: 'include' }, LINT_TIMEOUT)
-
-    return request
+function requestLint({ slug }) {
+    // Cookies, so that having cleared a Cloudflare check on radiopaedia.work counts.
+    return fetchWithTimeout(LINT_API + encodeURIComponent(slug), { headers: { 'Accept': 'application/json' }, credentials: 'include' }, LINT_TIMEOUT)
         .then(response => response.text().then(text => ({ status: response.status, text })))
         .catch(error => ({ failed: error.name === 'AbortError' ? 'timeout' : 'network' }))
 }

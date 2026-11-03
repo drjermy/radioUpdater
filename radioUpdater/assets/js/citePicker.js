@@ -1,5 +1,5 @@
 // Radiopaedia Cite, by Giorgio (https://github.com/gmadevs/radiopaedia-citation-manager),
-// MIT licensed, ported from userscript v1.5.7. It runs in the page itself ("world":
+// MIT licensed (LICENSE-Giorgio.txt), ported from userscript v1.5.7. It runs in the page itself ("world":
 // "MAIN" in manifest.json) so that it can reach the page's TinyMCE editors; the
 // changes for radioUpdater are marked "radioUpdater:".
 

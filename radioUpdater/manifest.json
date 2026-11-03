@@ -36,8 +36,7 @@
         }
     ],
     "host_permissions": [
-        "https://radiopaedia.work/*",
-        "https://raw.githubusercontent.com/gmadevs/radiopaedia-lint-userscript/*"
+        "https://radiopaedia.work/*"
     ],
     "background": {
         "service_worker": "background.js"

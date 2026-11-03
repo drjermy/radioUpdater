@@ -12,18 +12,6 @@ describe('requestLint', () => {
     expect(fetch.mock.calls[0][0]).toBe('https://radiopaedia.work/api/v1/lint?article=a%2Fb')
   })
 
-  it('reads a shared file, without cookies', async () => {
-    await requestLint({ file: 'acronyms.txt' })
-    let [url, options] = fetch.mock.calls[0]
-    expect(url).toBe('https://raw.githubusercontent.com/gmadevs/radiopaedia-lint-userscript/main/acronyms.txt')
-    expect(options.credentials).toBeUndefined()
-  })
-
-  it('refuses any other file', async () => {
-    expect(await requestLint({ file: '../other/repo.txt' })).toEqual({ failed: 'network' })
-    expect(fetch).not.toHaveBeenCalled()
-  })
-
   it('tells a timeout from a network failure', async () => {
     fetch.mockRejectedValueOnce(Object.assign(new Error(), { name: 'AbortError' }))
     expect(await requestLint({ slug: 'x' })).toEqual({ failed: 'timeout' })
@@ -61,7 +49,7 @@ describe('Lint in the editor', () => {
     Element.prototype.scrollIntoView = () => {}
     document.execCommand = vi.fn(() => true)
     chrome.runtime.sendMessage.mockImplementation((message, reply) => {
-      reply(message.slug ? { status: 200, text: JSON.stringify(answer) } : { status: 200, text: '' })
+      reply({ status: 200, text: JSON.stringify(answer) })
     })
     vi.spyOn(console, 'info').mockImplementation(() => {})
     require('../radioUpdater/assets/js/lint.js')
@@ -80,7 +68,7 @@ describe('Lint in the editor', () => {
   const tool = () => document.querySelector('.rlx-tool')
   const press = () => tool().click()
   const note = () => document.querySelector('#rlx-note')
-  const asked = () => chrome.runtime.sendMessage.mock.calls.filter(([m]) => m.slug)
+  const asked = () => chrome.runtime.sendMessage.mock.calls
   const settled = (what) => vi.waitFor(() => { if (!document.querySelector(what)) throw new Error(`no ${what}`) })
   const point = (x, y) => document.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true }))
   const button = (label) => [...note().querySelectorAll('button')].find((b) => b.textContent === label)
