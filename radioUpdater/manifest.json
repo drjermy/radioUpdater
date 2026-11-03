@@ -1,6 +1,6 @@
 {
     "name": "RadioUpdater",
-    "version": "3.9.0",
+    "version": "3.10.0",
     "description": "Productivity tools for Radiopaedia editors.",
     "manifest_version": 3,
     "content_scripts": [
@@ -14,7 +14,8 @@
                 "assets/js/cite.js",
                 "assets/js/citePickerBridge.js",
                 "assets/js/contentScript.js",
-                "assets/js/reviewLink.js"
+                "assets/js/reviewLink.js",
+                "assets/js/lint.js"
             ],
             "css": [
                 "assets/css/app.css"
@@ -35,7 +36,8 @@
         }
     ],
     "host_permissions": [
-        "https://radiopaedia.work/*"
+        "https://radiopaedia.work/*",
+        "https://raw.githubusercontent.com/gmadevs/radiopaedia-lint-userscript/*"
     ],
     "background": {
         "service_worker": "background.js"

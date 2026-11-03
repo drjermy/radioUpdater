@@ -76,9 +76,8 @@
  * created.
  *
  * The reference itself is never rewritten. If what is already down there
- * differs from what the databases say, that is a job for the citation linter
- * (radiopaedia-lint's `Lint citation` chip) and not for a tool whose business
- * is the number.
+ * differs from what the databases say, that is a job for CiteItRight and not
+ * for a tool whose business is the number.
  *
  * What it costs
  * -------------

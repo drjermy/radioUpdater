@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.10
+
+### Added
+- Article linter, by Giorgio (from his Radiopaedia Lint userscript): a **Lint** button beside the article title and in the editor toolbar that marks the radiopaedia.work linter's findings on the text in the editor, with what each says on pointing at it and Ignore or, for a missing Oxford comma, Apply. It asks only when pressed. Uninstall the userscript, or each article gets two buttons.
+
 ## 3.9
 
 ### Added

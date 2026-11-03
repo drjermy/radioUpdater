@@ -4,7 +4,7 @@ A Chrome extension for Radiopaedia editors that checks and formats references us
 
 ## What it does
 
-When editing an article or case on Radiopaedia, RadioUpdater adds a **CiteItRight** button next to each reference. Hover over the button to check a reference, or click it to refresh.
+When editing an article or case on Radiopaedia, RadioUpdater adds a **CiteItRight** button next to each reference. Hover over the button to check a reference, or click it to refresh. It also [lints articles](#linting-articles).
 
 - **Match** — the reference is already correctly formatted
 - **Review** — hover the status button to see the suggested changes, then click to accept
@@ -68,6 +68,18 @@ One case is not caught: an isotope written with a space before and after it, fol
 
 - The reference boxes stay in place and their text is swapped, so a box's **CiteItRight** status may refer to its previous text. Hover the button again to check it.
 
+## Linting articles
+
+**Lint**, beside an article's title and in the article editor's toolbar, runs the [radiopaedia.work linter](https://radiopaedia.work/lint/linter) on it. This comes from Giorgio's [Radiopaedia Lint](https://github.com/gmadevs/radiopaedia-lint-userscript) userscript, without its automatic mode, missing-sections margin, citation chips, forced re-read or retraction check. Uninstall the userscript, or each article gets two buttons.
+
+- With findings, it opens the editor and marks them on the text; the marks are drawn over the text and are not part of it. The number on the toolbar button is how many are left.
+- Point at a mark to read what it says. **Ignore** hides it in this tab until the tab is closed, without changing the article or the linter. **Apply**, on a missing Oxford comma, puts the comma in, and ctrl-Z takes it out. That is the one finding the extension can work out a change for; the linter gives the rest as a message, so you make those changes yourself.
+- A mark goes when its own words change, and comes back if ctrl-Z restores them. A mark over a whole sentence or paragraph goes when any of it changes.
+- From the keyboard, Alt+J and Alt+K go through the marks, Alt+X ignores, and Alt+Enter applies.
+- Words on the shared proper noun and acronym lists are not reported. They are read from the userscript's repository, and a note can propose a new one there.
+
+The linter reads the published article, not your unsaved text, and may answer from its last read of it. Pressing the toolbar button off and on asks again, and to force a fresh read use the ⟳ on the linter's own page.
+
 ## Testing
 
 Tests use [Vitest](https://vitest.dev/) with jsdom for DOM API support. The test suite covers the security-critical and utility functions — the parts where bugs are hardest to catch manually.
@@ -82,6 +94,7 @@ npm test
 - `decodeHTML` — HTML entity decoding edge cases
 - `createButton` / `createHiddenDiv` — DOM helper output
 - `fetchWithTimeout` — timeout abort, error handling, option passthrough
+- `requestLint` and the **Lint** button — which requests go out and when, and the findings on a mock edit page
 - `renumberPlan` / `renumberReference` / `classifySuperscript` — the citation-order numbering, how citations are told from units, exponents and isotopes, and the **Renumber references** preview, apply and undo on a mock edit page
 
 DOM manipulation and Chrome API integration (content scripts, message passing) are verified manually since they depend on the live Radiopaedia page and Chrome extension runtime.

@@ -1,6 +1,6 @@
 # Privacy Policy for RadioUpdater
 
-**Last updated:** February 2026
+**Last updated:** November 2026
 
 ## Overview
 
@@ -8,28 +8,35 @@ RadioUpdater is a Chrome extension that helps Radiopaedia editors check and form
 
 ## Data collection
 
-RadioUpdater does **not** collect, store, or transmit any personal data. It does not use cookies, analytics, or tracking of any kind.
+RadioUpdater does **not** collect, store, or transmit any personal data. It does not set cookies, or use analytics or tracking of any kind.
 
 ## Data transmitted to external services
 
 When you use the Cite feature on a Radiopaedia article or case edit page, the extension sends the **text content of individual reference fields** to the Cite API (`radiopaedia.work/cite`) for citation formatting and verification. This happens only when you interact with the Cite button (by hovering or clicking).
 
+When you press **Lint** on an article, the extension sends the **article's slug**, which is in the page's URL, to the linter API (`radiopaedia.work/api/v1/lint`), along with your browser's own cookies for `radiopaedia.work`. It also reads the shared proper noun and acronym lists from GitHub, which sends nothing from the page.
+
 No other page content, browsing history, or personal information is sent.
 
 ## Data storage
 
-RadioUpdater does not store any data locally or remotely. Reference text is sent to the Cite API for processing and the formatted result is displayed on the page. Nothing is persisted after you navigate away.
+RadioUpdater does not store any data remotely. Reference text is sent to the Cite API for processing and the formatted result is displayed on the page.
+
+The linter keeps its answers, the shared lists and the findings you ignore in the tab's `sessionStorage`, and the words you have proposed in the browser's `localStorage`. None of this leaves the browser.
 
 ## Third-party services
 
 | Service | URL | Purpose | Data sent |
 |---------|-----|---------|-----------|
 | Cite | radiopaedia.work/cite | Citation formatting and verification | Reference text from edit page fields |
+| Linter | radiopaedia.work/api/v1/lint | Article linting | The article's slug |
+| GitHub | raw.githubusercontent.com | The linter's shared lists | Nothing from the page |
 
 ## Permissions
 
 - **Host permission for `radiopaedia.org`** — required to add Cite buttons to article and case edit pages
-- **Host permission for `radiopaedia.work`** — required to send references for formatting
+- **Host permission for `radiopaedia.work`** — required to send references for formatting and articles for linting
+- **Host permission for `raw.githubusercontent.com`** — required to read the linter's shared lists, and limited to that repository
 
 ## Changes to this policy
 
