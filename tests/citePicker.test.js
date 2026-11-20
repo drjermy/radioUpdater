@@ -171,18 +171,59 @@ describe('Looking up a paper in the picker', () => {
     const go = () => document.querySelector('.rcx-go')
     let p, before
 
-    beforeEach(() => {
+    const foot = () => document.querySelector('.rcx-foot').textContent
+    // Opens the picker with the caret at the end of the paragraph.
+    const openOn = (html) => {
       document.querySelector('.rcx-panel') && document.querySelector('.rcx-btn-cite').click()
-      p = document.querySelector('.ProseMirror p')
-      before = p.innerHTML
-      p.innerHTML = 'Some text that is long enough to be the article. <sup>1</sup>'
+      p.innerHTML = html
       const caret = document.createRange()
-      caret.setStartAfter(p.querySelector('sup'))
+      caret.setStartAfter(p.lastChild)
       caret.collapse(true)
       getSelection().removeAllRanges()
       getSelection().addRange(caret)
       document.dispatchEvent(new Event('selectionchange'))
       document.querySelector('.rcx-btn-cite').click()
+    }
+
+    beforeEach(() => {
+      p = document.querySelector('.ProseMirror p')
+      before = p.innerHTML
+      openOn('Some text that is long enough to be the article. <sup>1</sup>')
+    })
+
+    it('on new text, offers Cite with the picked numbers, and nothing to cite before a pick', async () => {
+      openOn('Some text that is long enough to be the article.')
+      expect(go().textContent).toBe('Cite')
+      expect(go().disabled).toBe(true)
+      expect(foot()).toContain('⏎  cite highlighted')
+
+      row(2).click()
+      expect(go().textContent).toBe('Cite 2')
+      expect(foot()).toContain('⏎  cite 2')
+      go().click()
+
+      await vi.waitFor(() => expect(p.querySelector('sup')?.textContent).toBe('2'))
+      expect(document.querySelector('.rcx-panel')).toBeNull()
+      p.innerHTML = before
+    })
+
+    it('says in the footer what return will do, with no ⌘ needed to add', () => {
+      expect(foot()).toContain('⏎  cite 1')
+      expect(foot()).not.toContain('add another')
+
+      row(2).click()
+      expect(foot()).toContain('⏎  change to 1,2')
+      p.innerHTML = before
+    })
+
+    it('unpicks from the tray as well as from the list', () => {
+      row(2).click()
+      const chip = [...document.querySelectorAll('.rcx-chip')].find((c) => c.textContent.startsWith('2'))
+      chip.click()
+
+      expect(go().textContent).toBe('Cite 1')
+      expect(row(2).querySelector('.rcx-n-picked')).toBeNull()
+      p.innerHTML = before
     })
 
     it('adds to an existing marker without a modifier key, keeping the old number', async () => {
