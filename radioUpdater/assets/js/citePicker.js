@@ -1425,6 +1425,7 @@
     const caret = liveCaret(target);
     panel.marker = caret ? adjacentMarker(target, caret) : null;
     panel.batch = panel.marker ? markerNumbers(panel.marker.textContent) || [] : [];
+    panel.original = markerText(panel.batch);
     panel.query = '';
     panel.mode = 'pick';
     panel.found = null;
@@ -1438,7 +1439,7 @@
         '<span class="rcx-where"></span>' +
         '<button type="button" class="rcx-x" title="Close (esc)">×</button>' +
       '</div>' +
-      '<div class="rcx-batch" hidden></div>' +
+      '<div class="rcx-batch"></div>' +
       '<input type="text" class="rcx-q" spellcheck="false" autocomplete="off">' +
       '<div class="rcx-list" role="listbox"></div>' +
       '<div class="rcx-foot"></div>';
@@ -1643,7 +1644,6 @@
     const odd = misnumbered(panel.rows);
     const batch = el.querySelector('.rcx-batch');
     batch.textContent = '';
-    batch.hidden = !panel.batch.length;
     for (const n of panel.batch) {
       const chip = document.createElement('button');
       chip.type = 'button';
@@ -1655,10 +1655,22 @@
       });
       batch.appendChild(chip);
     }
+    // radioUpdater: a click picks or unpicks, and this writes the picked set, so
+    // adding to a marker needs no modifier key. Empty, it is off: no empty <sup>.
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'rcx-go';
+    go.disabled = !panel.batch.length;
+    // radioUpdater: "change to" only once the picked set differs from the marker's.
+    const verb = panel.marker && markerText(panel.batch) !== panel.original ? 'change to' : 'cite';
+    go.textContent = `${verb[0].toUpperCase()}${verb.slice(1)} ${markerText(panel.batch)}`.trim();
+    go.addEventListener('click', () => citeNumbers(panel.batch));
+    batch.appendChild(go);
 
     foot.textContent = panel.batch.length
-      ? `⏎  ${panel.marker ? 'change to' : 'cite'} ${markerText(panel.batch)}    ⌘⏎  add another    esc  close`
-      : '↑↓  choose    ⏎  cite    ⌘⏎  cite several    esc  close';
+      ? `click  pick or unpick    ⌘⏎  pick highlighted    ⏎  ${verb} ` +
+        `${markerText(panel.batch)}    esc  close`
+      : 'click  pick    ↑↓  choose    ⏎  cite highlighted    esc  close';
     if (odd.length) {
       const warn = document.createElement('span');
       warn.className = 'rcx-odd';
@@ -1738,7 +1750,7 @@
     el.append(badge, body);
     el.addEventListener('click', (e) => {
       panel.at = i;
-      if (e.metaKey || e.ctrlKey) return void addToBatch();
+      if (item.kind === 'ref') return void toggleBatch();
       activate();
     });
     el.addEventListener('mousemove', () => {
@@ -2094,7 +2106,7 @@
       if (panel.mode === 'found') return void confirmLookup();
       if (panel.mode === 'trouble') return void startLookup(panel.query);
       if (panel.mode !== 'pick') return;
-      if (e.metaKey || e.ctrlKey) return addToBatch();
+      if (e.metaKey || e.ctrlKey) return toggleBatch();
       if (panel.batch.length) return void citeNumbers(panel.batch);
       return activate();
     }
@@ -2121,14 +2133,15 @@
 
   /* Several at once. A paragraph resting on three papers is written
    * `<sup>2,5,9</sup>`, and typing three searches and pressing return three
-   * times would leave three separate markers to merge by hand. Each ⌘⏎ drops
-   * a number in the tray and clears the box for the next search; return cites
-   * the tray, in one marker, in order. */
-  function addToBatch() {
+   * times would leave three separate markers to merge by hand. Each click (or
+   * ⌘⏎) on a reference puts its number in the tray, or takes it out if it is
+   * there, and clears the box for the next search; return cites the tray, in
+   * one marker, in order. */
+  function toggleBatch() {
     const item = panel.view[panel.at];
     if (!item || item.kind !== 'ref') return;
     const n = +item.badge;
-    if (!panel.batch.includes(n)) panel.batch.push(n);
+    panel.batch = panel.batch.includes(n) ? panel.batch.filter((x) => x !== n) : [...panel.batch, n];
     panel.query = '';
     panel.el.querySelector('.rcx-q').value = '';
     recount();
@@ -3267,7 +3280,12 @@
     .rcx-batch {
       display:flex; flex-wrap:wrap; gap:4px; padding:6px 8px 0;
     }
-    .rcx-batch[hidden] { display:none; }
+    .rcx-go {
+      margin-left:auto; padding:1px 8px; border:0; border-radius:2px;
+      background:#5b2d90; color:#fff;
+      font-family:inherit; font-size:11px; font-weight:600; cursor:pointer;
+    }
+    .rcx-go:disabled { background:#ccc; cursor:default; }
     .rcx-chip {
       padding:1px 6px; border:1px solid rgba(91,45,144,.3); border-radius:2px;
       background:rgba(91,45,144,.08); color:#5b2d90;

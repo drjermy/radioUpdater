@@ -155,6 +155,7 @@ describe('Looking up a paper in the picker', () => {
 
     document.querySelector('.rcx-btn-cite').click()
     document.querySelector('.rcx-row-ref, .rcx-row').click()
+    document.querySelector('.rcx-go').click()
 
     await vi.waitFor(() => expect(p.querySelector('sup')?.textContent).toBe('1'))
     expect(unset).toHaveBeenCalledWith('superscript')
@@ -162,6 +163,62 @@ describe('Looking up a paper in the picker', () => {
 
     delete root.editor
     root.innerHTML = before
+  })
+
+  describe('picking by click', () => {
+    const rows = () => [...document.querySelectorAll('.rcx-row-ref')]
+    const row = (n) => rows().find((r) => r.querySelector('.rcx-n').textContent === String(n))
+    const go = () => document.querySelector('.rcx-go')
+    let p, before
+
+    beforeEach(() => {
+      document.querySelector('.rcx-panel') && document.querySelector('.rcx-btn-cite').click()
+      p = document.querySelector('.ProseMirror p')
+      before = p.innerHTML
+      p.innerHTML = 'Some text that is long enough to be the article. <sup>1</sup>'
+      const caret = document.createRange()
+      caret.setStartAfter(p.querySelector('sup'))
+      caret.collapse(true)
+      getSelection().removeAllRanges()
+      getSelection().addRange(caret)
+      document.dispatchEvent(new Event('selectionchange'))
+      document.querySelector('.rcx-btn-cite').click()
+    })
+
+    it('adds to an existing marker without a modifier key, keeping the old number', async () => {
+      expect(row(1).querySelector('.rcx-n-picked')).not.toBeNull()
+      expect(go().textContent).toBe('Cite 1')
+
+      row(2).click()
+      expect(go().textContent).toBe('Change to 1,2')
+      go().click()
+
+      await vi.waitFor(() => expect(p.querySelector('sup').textContent).toBe('1,2'))
+      p.innerHTML = before
+    })
+
+    it('unpicks on a second click, and cannot write an empty marker', () => {
+      row(2).click()
+      row(2).click()
+      expect(go().textContent).toBe('Cite 1')
+
+      row(1).click()
+      expect(go().disabled).toBe(true)
+      expect(document.querySelector('.rcx-panel')).not.toBeNull()
+      expect(p.querySelector('sup').textContent).toBe('1')
+      p.innerHTML = before
+    })
+
+    it('still looks up a paper from the lookup row', async () => {
+      const input = document.querySelector('.rcx-panel input')
+      input.value = SEARCH
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      document.querySelector('.rcx-row-lookup').click()
+
+      await vi.waitFor(() => expect(document.querySelector('.rcx-found')).not.toBeNull())
+      expect(go().textContent).toBe('Cite 1')
+      p.innerHTML = before
+    })
   })
 
   it('stops counting a reference once it has been removed', () => {

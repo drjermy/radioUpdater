@@ -1,15 +1,20 @@
 # Changelog
 
-## 3.12
+## 3.13
 
-### Added
-- Lint shows the linter's suggested fix for far more findings, not only a missing Oxford comma, and **Apply** makes the change. Links inside the words are kept, so a bracketed e.g. can become an inline one
-- Lint says so when the editor has already removed a space it found in the published text, so saving the article is all that is left to do
+### Changed
+- In the citation picker a click on a reference picks it, and a second click unpicks it, with no ⌘ or ctrl needed. **Cite** (or **Change to**, once you have changed the numbers on an existing citation) writes the numbers picked, so clicking another reference on a citation adds to it rather than replacing it. Return still cites the highlighted reference when nothing is picked
 
 ### Fixed
 - A Lint finding about a heading now marks the heading, not a bullet earlier in the article with the same words
 - Adding a looked-up paper from the citation picker on a case now says what to do: save the text, then paste the citation, which is on the clipboard, into **Add reference**
 - A one-digit citation no longer warns that the editor would not raise it, and what you type after a citation is no longer in superscript
+
+## 3.12
+
+### Added
+- Lint shows the linter's suggested fix for far more findings, not only a missing Oxford comma, and **Apply** makes the change. Links inside the words are kept, so a bracketed e.g. can become an inline one
+- Lint says so when the editor has already removed a space it found in the published text, so saving the article is all that is left to do
 
 ## 3.11
 
