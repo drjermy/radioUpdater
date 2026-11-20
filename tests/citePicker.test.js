@@ -209,6 +209,31 @@ describe('Looking up a paper in the picker', () => {
       p.innerHTML = before
     })
 
+    const key = (key, extra) => document.querySelector('.rcx-panel input')
+      .dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, ...extra }))
+    const highlighted = () => document.querySelector('.rcx-on .rcx-n')?.textContent
+    const highlight = (n) => { while (highlighted() !== String(n)) key('ArrowDown') }
+
+    it('picks the highlighted reference on ⌘⏎ or ctrl-⏎', () => {
+      highlight(2)
+      key('Enter', { metaKey: true })
+      expect(go().textContent).toBe('Change to 1,2')
+
+      key('Enter', { ctrlKey: true })
+      expect(go().textContent).toBe('Cite 1')
+      p.innerHTML = before
+    })
+
+    it('with nothing picked, cites the highlighted reference on return', async () => {
+      row(1).click()
+      expect(go().disabled).toBe(true)
+      highlight(2)
+      key('Enter')
+
+      await vi.waitFor(() => expect(p.querySelector('sup').textContent).toBe('2'))
+      p.innerHTML = before
+    })
+
     it('still looks up a paper from the lookup row', async () => {
       const input = document.querySelector('.rcx-panel input')
       input.value = SEARCH
