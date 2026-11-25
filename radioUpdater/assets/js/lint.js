@@ -505,13 +505,21 @@
    *
    * Filling a block is not enough on its own: the bullet "pars distalis" fills
    * its block too, and comes before the heading "Pars distalis" it introduces.
-   * The line the linter quotes says which of the two it meant. */
+   * The line the linter quotes says which of the two it meant.
+   *
+   * radioUpdater: a heading finding with no heading that is exactly its words
+   * tries the headings that contain them before the whole article. The linter
+   * can read the article with US spelling while the editor holds the UK one,
+   * so "Etiology" has to find the heading "Aetiology", not the "aetiology" of
+   * a sentence above it. */
   function pick(index, needle, occurrence, heading) {
     const hits = locateAll(index, needle);
     if (!hits.length) return null;
-    const exact = hits.filter((h) => fillsBlock(index, h)
-      && index.owners[h.from].matches('h1,h2,h3,h4,h5,h6') === heading);
-    const list = exact.length >= occurrence ? exact : hits;
+    const inHeading = (h) => index.owners[h.from].matches('h1,h2,h3,h4,h5,h6');
+    const exact = hits.filter((h) => fillsBlock(index, h) && inHeading(h) === heading);
+    const headings = heading ? hits.filter(inHeading) : [];
+    const list = exact.length >= occurrence ? exact
+      : headings.length >= occurrence ? headings : hits;
     return list[occurrence - 1] || null;
   }
 

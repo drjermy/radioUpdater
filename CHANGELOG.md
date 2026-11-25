@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- A Lint finding about a heading marks the heading even when the linter spells it differently from the editor, e.g. Etiology for Aetiology, rather than the same word in a sentence above it
+
 ## 3.13
 
 ### Changed

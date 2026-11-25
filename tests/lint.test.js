@@ -360,6 +360,14 @@ describe('Lint in the editor', () => {
       expect([...seen]).toEqual(['heading'])
     })
 
+    it('marks the heading when the linter spelt it differently', async () => {
+      document.querySelector('#editor').innerHTML = '<p id="prose">Bilateral palsy usually has a more serious aetiology.</p><h5 id="heading">Aetiology</h5>'
+      const seen = marked()
+      await lint(line('<h5>Etiology</h5>', 'Etiology'))
+
+      expect([...seen]).toEqual(['heading'])
+    })
+
     it('marks the bullet when that is the line the linter quoted', async () => {
       document.querySelector('#editor').innerHTML = '<p>Enough text to be read as the article body here.</p><h6 id="heading">Pars distalis</h6><p id="bullet">Pars distalis</p>'
       const seen = marked()
